@@ -9,7 +9,12 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Kitap barkodunu taramak ve kapak fotoğrafı çekmek için kamera kullanılıyor.",
+        "NSPhotoLibraryUsageDescription": "Kitap kapağı seçmek ve paylaşım kartını galeriye kaydetmek için fotoğraf galerisine erişim gerekiyor.",
+        "NSPhotoLibraryAddUsageDescription": "Paylaşım kartını fotoğraf galerisine kaydetmek için izin gerekiyor."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +24,13 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES"
+      ]
     },
     "web": {
       "output": "static",
@@ -27,6 +38,25 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Kitap barkodunu taramak için kameraya erişim gerekiyor."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Paylaşım kartını galerine kaydetmek için izin gerekiyor."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Kitap kapağı seçmek için fotoğraf galerisine erişim gerekiyor.",
+          "cameraPermission": "Kitap kapağı çekmek için kameraya erişim gerekiyor."
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -38,7 +68,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
