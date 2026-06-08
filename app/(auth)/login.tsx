@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/constants/tokens';
 
@@ -85,7 +86,10 @@ export default function LoginScreen() {
 
         <Pressable
           style={[styles.submit, { backgroundColor: t.fg }]}
-          onPress={() => router.replace('/library' as any)}
+          onPress={async () => {
+            await AsyncStorage.setItem('@ayrac_has_entered', 'true');
+            router.replace('/(app)/(main)/library' as any);
+          }}
         >
           <Text style={[styles.submitText, { color: t.bg }]}>Giriş yap</Text>
         </Pressable>

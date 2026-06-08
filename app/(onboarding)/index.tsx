@@ -6,11 +6,11 @@ import {
   FlatList,
   Pressable,
   Dimensions,
-  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { fonts } from '@/constants/tokens';
 
 const { width: W } = Dimensions.get('window');
 const CREAM = '#F5F0E8';
@@ -210,11 +210,11 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#fff',
-    fontSize: 36,
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontWeight: 'bold',
-    lineHeight: 44,
+    fontSize: 34,
+    fontFamily: fonts.serifMedium,
+    lineHeight: 42,
     marginBottom: 16,
+    letterSpacing: -0.5,
   },
   description: {
     color: 'rgba(255,255,255,0.55)',
