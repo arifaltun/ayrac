@@ -50,6 +50,7 @@ export default function EditBookScreen() {
   const [rating, setRating] = useState(book?.rating ?? 0);
   const [color, setColor] = useState(book?.color ?? BOOK_COLORS[0]);
   const [coverImage, setCoverImage] = useState<string | undefined>(book?.coverImage);
+  const [review, setReview] = useState(book?.review ?? '');
   const [pickerVisible, setPickerVisible] = useState(false);
 
   if (!book) {
@@ -93,6 +94,7 @@ export default function EditBookScreen() {
       rating: status === 'finished' ? rating : 0,
       color,
       coverImage,
+      review: status === 'finished' && review.trim().length >= 50 ? review.trim() : book.review,
     };
     updateBook(updated);
     router.back();
@@ -231,6 +233,46 @@ export default function EditBookScreen() {
             </View>
           )}
 
+          {status === 'finished' && (
+            <View style={styles.field}>
+              <View style={styles.reviewLabelRow}>
+                <Text style={[styles.fieldLabel, { color: t.muted }]}>DÜŞÜNCELERİN</Text>
+                <Text style={[
+                  styles.charCount,
+                  {
+                    color: review.length > 0 && review.length < 50
+                      ? t.orange
+                      : review.length > 260
+                      ? '#e55'
+                      : t.muted,
+                  },
+                ]}>
+                  {review.length}/280
+                </Text>
+              </View>
+              <TextInput
+                style={[inputStyle, styles.reviewInput]}
+                value={review}
+                onChangeText={(v) => setReview(v.slice(0, 280))}
+                placeholder="Bu kitap hakkında düşüncelerini yaz..."
+                placeholderTextColor={t.mutedStrong}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+              {review.length > 0 && review.length < 50 && (
+                <Text style={[styles.reviewHint, { color: t.orange }]}>
+                  En az 50 karakter gerekiyor ({50 - review.length} kaldı)
+                </Text>
+              )}
+              {review.length >= 50 && (
+                <Text style={[styles.reviewHint, { color: '#4ecb91' }]}>
+                  Düşünceni paylaşım kartına ekleyebilirsin
+                </Text>
+              )}
+            </View>
+          )}
+
           {status === 'reading' && (
             <Pressable
               style={[styles.readingModeBtn, { backgroundColor: '#000', borderColor: '#333' }]}
@@ -294,6 +336,10 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: 'row', gap: 8 },
   statusBtn: { flex: 1, paddingVertical: 9, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
   starsRow: { flexDirection: 'row', gap: 4 },
+  reviewLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  charCount: { fontSize: 10, fontWeight: '600', letterSpacing: 0.5 },
+  reviewInput: { minHeight: 90, paddingTop: 10, fontSize: 13, lineHeight: 20 },
+  reviewHint: { fontSize: 11, marginTop: 4, fontWeight: '500' },
   readingModeBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, padding: 13, borderRadius: 12, borderWidth: 1, marginTop: 8,

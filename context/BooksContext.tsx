@@ -12,6 +12,7 @@ export type Book = {
   genre: string;
   coverImage?: string;
   readingTime?: number;
+  review?: string;
   createdAt: number;
 };
 

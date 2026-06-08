@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet, Image,
-  Modal, TextInput, KeyboardAvoidingView, Platform,
+  Modal, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -9,7 +9,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useBooks, Book } from '@/context/BooksContext';
 import { useGoal } from '@/context/GoalContext';
-import { fonts } from '@/constants/tokens';
+import { fonts, BOOK_COLORS } from '@/constants/tokens';
+import {
+  loadReminderSettings, saveReminderSettings, scheduleReminder,
+  cancelReminder, requestNotificationPermission, ReminderSettings,
+} from '@/utils/notifications';
 
 const MONTHS_TR = [
   'Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
@@ -110,6 +114,218 @@ function SectionHeader({ label }: { label: string }) {
   );
 }
 
+function ReviewRow({ book }: { book: Book }) {
+  const { t } = useTheme();
+  const router = useRouter();
+  const [expanded, setExpanded] = useState(false);
+  const preview = book.review!.length > 120 && !expanded
+    ? book.review!.slice(0, 120).trimEnd() + '…'
+    : book.review!;
+
+  return (
+    <Pressable
+      style={[styles.reviewRow, { backgroundColor: t.surface, borderColor: t.border }]}
+      onPress={() => book.review!.length > 120 && setExpanded((e) => !e)}
+    >
+      <View style={styles.reviewRowTop}>
+        <BookCover color={book.color} size={36} coverImage={book.coverImage} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[styles.bookTitle, { color: t.fg, fontSize: 13 }]} numberOfLines={1}>{book.title}</Text>
+          {book.rating > 0 && <Stars value={book.rating} />}
+        </View>
+        <Pressable
+          onPress={() => router.push({ pathname: '/edit-book' as any, params: { id: book.id } })}
+          style={[styles.reviewEditBtn, { backgroundColor: t.bgSoft }]}
+        >
+          <Ionicons name="create-outline" size={13} color={t.muted} />
+        </Pressable>
+      </View>
+      <Text style={[styles.reviewText, { color: t.mutedStrong }]}>
+        {preview}
+      </Text>
+      {book.review!.length > 120 && (
+        <Text style={[styles.reviewToggle, { color: t.primary }]}>
+          {expanded ? 'Daha az göster' : 'Devamını gör'}
+        </Text>
+      )}
+    </Pressable>
+  );
+}
+
+const MONTHS_SHORT = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+
+type Recommendation = {
+  key: string;
+  title: string;
+  author: string;
+  pages: number;
+  coverId: number | null;
+  genre: string;
+};
+
+function RecommendationCard({ rec, onAdd, added }: {
+  rec: Recommendation;
+  onAdd: (rec: Recommendation) => void;
+  added: boolean;
+}) {
+  const { t } = useTheme();
+  const coverUri = rec.coverId
+    ? `https://covers.openlibrary.org/b/id/${rec.coverId}-M.jpg`
+    : null;
+
+  return (
+    <View style={[recStyles.card, { backgroundColor: t.surface, borderColor: t.border }]}>
+      {coverUri ? (
+        <Image source={{ uri: coverUri }} style={recStyles.cover} resizeMode="cover" />
+      ) : (
+        <View style={[recStyles.cover, { backgroundColor: t.bgSoft, alignItems: 'center', justifyContent: 'center' }]}>
+          <Ionicons name="book-outline" size={20} color={t.mutedStrong} />
+        </View>
+      )}
+      <Text style={[recStyles.title, { color: t.fg }]} numberOfLines={2}>{rec.title}</Text>
+      <Text style={[recStyles.author, { color: t.muted }]} numberOfLines={1}>{rec.author}</Text>
+      <Pressable
+        onPress={() => !added && onAdd(rec)}
+        style={[recStyles.addBtn, { backgroundColor: added ? t.bgSoft : t.primary, borderColor: added ? t.border : t.primary }]}
+      >
+        <Ionicons name={added ? 'checkmark' : 'add'} size={14} color={added ? t.muted : '#000'} />
+      </Pressable>
+    </View>
+  );
+}
+
+const recStyles = StyleSheet.create({
+  card: { width: 110, borderRadius: 12, padding: 10, borderWidth: 1, gap: 5 },
+  cover: { width: '100%', height: 80, borderRadius: 6, marginBottom: 4 },
+  title: { fontSize: 12, fontWeight: '600', lineHeight: 16, letterSpacing: -0.1 },
+  author: { fontSize: 10, lineHeight: 14 },
+  addBtn: {
+    marginTop: 4, height: 28, borderRadius: 8, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
+  },
+});
+
+function GoalDetailCard({ view, year, monthIndex, finishedInPeriod, activeGoal }: {
+  view: ViewMode;
+  year: number;
+  monthIndex: number;
+  finishedInPeriod: Book[];
+  activeGoal: number;
+}) {
+  const { t } = useTheme();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const isCurrentPeriod = view === 'yearly'
+    ? year === today.getFullYear()
+    : year === today.getFullYear() && monthIndex === today.getMonth();
+
+  // Build bar data
+  const bars: { label: string; count: number; isCurrent: boolean }[] = view === 'monthly'
+    ? (() => {
+        const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+        const starts = [1, 8, 15, 22, 29].filter((d) => d <= daysInMonth);
+        return starts.map((startDay, i) => {
+          const endDay = starts[i + 1] ? starts[i + 1] - 1 : daysInMonth;
+          const count = finishedInPeriod.filter((b) => {
+            const d = new Date(b.createdAt).getDate();
+            return d >= startDay && d <= endDay;
+          }).length;
+          const isCurrent = isCurrentPeriod
+            && today.getDate() >= startDay && today.getDate() <= endDay;
+          return { label: `H${i + 1}`, count, isCurrent };
+        });
+      })()
+    : MONTHS_SHORT.map((label, mi) => ({
+        label,
+        count: finishedInPeriod.filter((b) => new Date(b.createdAt).getMonth() === mi).length,
+        isCurrent: isCurrentPeriod && today.getMonth() === mi,
+      }));
+
+  const maxCount = Math.max(...bars.map((b) => b.count), 1);
+  const done = finishedInPeriod.length;
+  const booksLeft = Math.max(activeGoal - done, 0);
+  const goalMet = done >= activeGoal;
+
+  // Projection
+  let projectionText = '';
+  let timeLeftText = '';
+
+  if (goalMet) {
+    projectionText = 'Hedefe ulaştın!';
+  } else if (isCurrentPeriod && booksLeft > 0) {
+    let daysLeft = 0;
+    if (view === 'monthly') {
+      daysLeft = new Date(year, monthIndex + 1, 0).getDate() - today.getDate();
+    } else {
+      daysLeft = Math.ceil(
+        (new Date(year, 11, 31).getTime() - today.getTime()) / 86400000
+      );
+    }
+    const weeksLeft = daysLeft / 7;
+    if (weeksLeft > 0.5) {
+      const perWeek = Math.ceil(booksLeft / weeksLeft);
+      projectionText = `Hedefe ulaşmak için haftada ${perWeek} kitap`;
+      timeLeftText = view === 'monthly'
+        ? `${daysLeft} gün kaldı`
+        : `${Math.ceil(daysLeft / 30)} ay kaldı`;
+    }
+  }
+
+  const BAR_H = 52;
+
+  return (
+    <View style={[styles.goalDetailCard, { backgroundColor: t.surface, borderColor: t.border }]}>
+      <View style={styles.goalDetailHeader}>
+        <Text style={[styles.goalDetailTitle, { color: t.muted }]}>HEDEF DETAYI</Text>
+        {timeLeftText ? (
+          <Text style={[styles.goalDetailTime, { color: t.muted }]}>{timeLeftText}</Text>
+        ) : null}
+      </View>
+
+      {projectionText ? (
+        <Text style={[
+          styles.goalDetailProjection,
+          { color: goalMet ? '#4ecb91' : t.primary, fontFamily: fonts.serifMedium },
+        ]}>
+          {projectionText}
+        </Text>
+      ) : null}
+
+      {/* Bar chart */}
+      <View style={[styles.barChartRow, view === 'yearly' && { gap: 3 }]}>
+        {bars.map((bar, i) => (
+          <View key={i} style={styles.barChartCol}>
+            <View style={[styles.barChartTrack, { backgroundColor: t.bgSoft, height: BAR_H }]}>
+              {bar.count > 0 && (
+                <View style={[
+                  styles.barChartFill,
+                  {
+                    backgroundColor: bar.isCurrent ? t.primary : t.primarySoft,
+                    borderColor: bar.isCurrent ? t.primary : 'transparent',
+                    height: `${Math.max((bar.count / maxCount) * 100, 14)}%`,
+                  },
+                ]} />
+              )}
+            </View>
+            {bar.count > 0 && (
+              <Text style={[styles.barCount, { color: bar.isCurrent ? t.primary : t.fg }]}>
+                {bar.count}
+              </Text>
+            )}
+            <Text style={[styles.barLabel, {
+              color: bar.isCurrent ? t.primary : t.muted,
+              fontSize: view === 'yearly' ? 8 : 10,
+            }]}>
+              {bar.label}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function EmptyState() {
   const { t } = useTheme();
   const router = useRouter();
@@ -139,7 +355,7 @@ type ViewMode = 'monthly' | 'yearly';
 
 export default function LibraryScreen() {
   const { t, isDark, toggle } = useTheme();
-  const { books } = useBooks();
+  const { books, addBook } = useBooks();
   const { yearlyGoal, monthlyGoal, setYearlyGoal, setMonthlyGoal } = useGoal();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -148,9 +364,19 @@ export default function LibraryScreen() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [goalModalVisible, setGoalModalVisible] = useState(false);
   const [goalInput, setGoalInput] = useState('');
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [recGenre, setRecGenre] = useState('');
+  const [fetchingRecs, setFetchingRecs] = useState(false);
+  const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
+  const fetchedRef = useRef(false);
+  const [reminderVisible, setReminderVisible] = useState(false);
+  const [reminder, setReminder] = useState<ReminderSettings>({ enabled: false, hour: 20, minute: 0 });
+  const [reminderHourInput, setReminderHourInput] = useState('20');
+  const [reminderMinInput, setReminderMinInput] = useState('00');
 
   const reading = books.filter((b) => b.status === 'reading');
   const want = books.filter((b) => b.status === 'want');
+  const reviewed = books.filter((b) => b.status === 'finished' && b.review && b.review.length >= 50);
 
   const finishedInPeriod = books.filter((b) => {
     if (b.status !== 'finished') return false;
@@ -184,6 +410,91 @@ export default function LibraryScreen() {
 
   const periodLabel = view === 'monthly' ? `${MONTHS_TR[monthIndex]} ${year}` : `${year}`;
 
+  // Fetch personalised recommendations once we have enough data
+  useEffect(() => {
+    if (fetchedRef.current || finished.length < 1) return;
+
+    const genreCounts: Record<string, number> = {};
+    finished.forEach((b) => { if (b.genre) genreCounts[b.genre] = (genreCounts[b.genre] ?? 0) + 1; });
+    const topGenre = Object.entries(genreCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (!topGenre) return;
+
+    fetchedRef.current = true;
+    setRecGenre(topGenre);
+    setFetchingRecs(true);
+
+    const ownTitles = new Set(books.map((b) => b.title.toLowerCase()));
+
+    fetch(
+      `https://openlibrary.org/search.json?subject=${encodeURIComponent(topGenre)}&limit=25&fields=key,title,author_name,cover_i,number_of_pages_median`,
+    )
+      .then((r) => r.json())
+      .then((json) => {
+        const recs: Recommendation[] = (json.docs ?? [])
+          .filter((d: any) => d.title && d.author_name?.[0] && !ownTitles.has(d.title.toLowerCase()))
+          .slice(0, 10)
+          .map((d: any) => ({
+            key: d.key,
+            title: d.title,
+            author: d.author_name[0],
+            pages: d.number_of_pages_median ?? 0,
+            coverId: d.cover_i ?? null,
+            genre: topGenre,
+          }));
+        setRecommendations(recs);
+      })
+      .catch(() => {})
+      .finally(() => setFetchingRecs(false));
+  }, [finished.length]);
+
+  // Load reminder settings on mount
+  useEffect(() => {
+    loadReminderSettings().then((s) => {
+      setReminder(s);
+      setReminderHourInput(String(s.hour).padStart(2, '0'));
+      setReminderMinInput(String(s.minute).padStart(2, '0'));
+    });
+  }, []);
+
+  const openReminderModal = () => {
+    setReminderHourInput(String(reminder.hour).padStart(2, '0'));
+    setReminderMinInput(String(reminder.minute).padStart(2, '0'));
+    setReminderVisible(true);
+  };
+
+  const saveReminder = async (enabled: boolean) => {
+    const hour = Math.min(23, Math.max(0, parseInt(reminderHourInput) || 20));
+    const minute = Math.min(59, Math.max(0, parseInt(reminderMinInput) || 0));
+    const settings: ReminderSettings = { enabled, hour, minute };
+
+    if (enabled) {
+      const granted = await requestNotificationPermission();
+      if (!granted) { setReminderVisible(false); return; }
+      const currentBook = reading[0]?.title ?? null;
+      const streak = (() => {
+        // simple streak from sessions — reuse logic from wrapped
+        return 0;
+      })();
+      await scheduleReminder(settings, currentBook, streak);
+    } else {
+      await cancelReminder();
+    }
+
+    await saveReminderSettings(settings);
+    setReminder(settings);
+    setReminderVisible(false);
+  };
+
+  const handleAddRecommendation = (rec: Recommendation) => {
+    const color = BOOK_COLORS[Math.floor(Math.random() * BOOK_COLORS.length)];
+    const coverImage = rec.coverId
+      ? `https://covers.openlibrary.org/b/id/${rec.coverId}-M.jpg`
+      : undefined;
+    addBook({ title: rec.title, author: rec.author, pages: rec.pages, genre: rec.genre, status: 'want', color, rating: 0, coverImage });
+    setAddedKeys((prev) => new Set([...prev, rec.key]));
+    fetchedRef.current = false; // allow re-fetch with updated ownTitles next time
+  };
+
   const onPrev = () => {
     if (view === 'monthly') {
       monthIndex === 0 ? (setMonthIndex(11), setYear((y) => y - 1)) : setMonthIndex((m) => m - 1);
@@ -197,6 +508,53 @@ export default function LibraryScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: t.bg }]}>
+      {/* Reminder modal */}
+      <Modal visible={reminderVisible} transparent animationType="fade" onRequestClose={() => setReminderVisible(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setReminderVisible(false)}>
+            <Pressable style={[styles.modalCard, { backgroundColor: t.surface }]} onPress={() => {}}>
+              <Text style={[styles.modalTitle, { color: t.fg, fontFamily: fonts.serifMedium }]}>
+                Günlük hatırlatıcı
+              </Text>
+              <Text style={[styles.modalDesc, { color: t.muted }]}>
+                Her gün belirlediğin saatte şu an okuduğun kitabı ve okuma serini gösterir.
+              </Text>
+              <View style={styles.reminderTimeRow}>
+                <TextInput
+                  style={[styles.reminderTimeInput, { backgroundColor: t.bgSoft, borderColor: t.border, color: t.fg }]}
+                  value={reminderHourInput}
+                  onChangeText={(v) => setReminderHourInput(v.replace(/\D/g, '').slice(0, 2))}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  placeholder="20"
+                  placeholderTextColor={t.mutedStrong}
+                />
+                <Text style={[styles.reminderColon, { color: t.fg }]}>:</Text>
+                <TextInput
+                  style={[styles.reminderTimeInput, { backgroundColor: t.bgSoft, borderColor: t.border, color: t.fg }]}
+                  value={reminderMinInput}
+                  onChangeText={(v) => setReminderMinInput(v.replace(/\D/g, '').slice(0, 2))}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  placeholder="00"
+                  placeholderTextColor={t.mutedStrong}
+                />
+              </View>
+              <View style={styles.modalButtons}>
+                {reminder.enabled && (
+                  <Pressable style={[styles.modalBtn, { backgroundColor: t.bgSoft }]} onPress={() => saveReminder(false)}>
+                    <Text style={[styles.modalBtnText, { color: t.orange }]}>Kapat</Text>
+                  </Pressable>
+                )}
+                <Pressable style={[styles.modalBtn, { backgroundColor: t.primary, flex: 1 }]} onPress={() => saveReminder(true)}>
+                  <Text style={[styles.modalBtnText, { color: '#000' }]}>Ayarla</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* Goal modal */}
       <Modal visible={goalModalVisible} transparent animationType="fade" onRequestClose={() => setGoalModalVisible(false)}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -243,6 +601,12 @@ export default function LibraryScreen() {
           <Text style={[styles.logoText, { color: t.fg, fontFamily: fonts.serif }]}>ayraç</Text>
         </View>
         <View style={styles.headerRight}>
+          <Pressable
+            style={[styles.iconBtn, { backgroundColor: t.surface, borderColor: reminder.enabled ? t.primary : t.border }]}
+            onPress={openReminderModal}
+          >
+            <Ionicons name={reminder.enabled ? 'notifications' : 'notifications-outline'} size={14} color={reminder.enabled ? t.primary : t.muted} />
+          </Pressable>
           <Pressable
             style={[styles.iconBtn, { backgroundColor: t.surface, borderColor: t.border }]}
             onPress={toggle}
@@ -307,6 +671,16 @@ export default function LibraryScreen() {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       >
+        {activeGoal != null && (
+          <GoalDetailCard
+            view={view}
+            year={year}
+            monthIndex={monthIndex}
+            finishedInPeriod={finishedInPeriod}
+            activeGoal={activeGoal}
+          />
+        )}
+
         {books.length === 0 ? (
           <EmptyState />
         ) : (
@@ -329,6 +703,36 @@ export default function LibraryScreen() {
               <>
                 <SectionHeader label="OKUNACAKLAR" />
                 {want.map((b) => <BookRow key={b.id} book={b} />)}
+              </>
+            )}
+
+            {reviewed.length > 0 && (
+              <>
+                <SectionHeader label="DÜŞÜNCELERİM" />
+                {reviewed.map((b) => <ReviewRow key={b.id} book={b} />)}
+              </>
+            )}
+
+            {(fetchingRecs || recommendations.length > 0) && (
+              <>
+                <SectionHeader label={`SANA ÖZEL${recGenre ? ` · ${recGenre}` : ''}`} />
+                {fetchingRecs ? (
+                  <View style={styles.recLoading}>
+                    <ActivityIndicator size="small" color={t.mutedStrong} />
+                    <Text style={[styles.recLoadingText, { color: t.muted }]}>Öneriler yükleniyor…</Text>
+                  </View>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.recScroll}>
+                    {recommendations.map((rec) => (
+                      <RecommendationCard
+                        key={rec.key}
+                        rec={rec}
+                        onAdd={handleAddRecommendation}
+                        added={addedKeys.has(rec.key) || books.some((b) => b.title.toLowerCase() === rec.title.toLowerCase())}
+                      />
+                    ))}
+                  </ScrollView>
+                )}
               </>
             )}
 
@@ -401,6 +805,32 @@ const styles = StyleSheet.create({
   goalTrack: { width: '100%', height: 3, borderRadius: 2, overflow: 'hidden', marginTop: 6 },
   goalFill: { height: '100%', borderRadius: 2 },
   goalSetText: { fontSize: 10, marginTop: 2 },
+  goalDetailCard: {
+    borderRadius: 14, padding: 14, borderWidth: 1, marginBottom: 0,
+  },
+  goalDetailHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  goalDetailTitle: { fontSize: 9, fontWeight: '700', letterSpacing: 1.5 },
+  goalDetailTime: { fontSize: 11 },
+  goalDetailProjection: { fontSize: 15, letterSpacing: -0.2, marginBottom: 14 },
+  barChartRow: { flexDirection: 'row', gap: 6, alignItems: 'flex-end' },
+  barChartCol: { flex: 1, alignItems: 'center', gap: 3 },
+  barChartTrack: { width: '100%', borderRadius: 4, overflow: 'hidden', justifyContent: 'flex-end' },
+  barChartFill: { width: '100%', borderRadius: 4, borderWidth: 1 },
+  barCount: { fontSize: 10, fontWeight: '700' },
+  barLabel: { fontWeight: '600', letterSpacing: 0.3 },
+  reviewRow: {
+    borderRadius: 12, padding: 11, borderWidth: 1, gap: 8,
+  },
+  reviewRowTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  reviewEditBtn: {
+    width: 28, height: 28, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  reviewText: { fontSize: 13, lineHeight: 19, letterSpacing: 0.1 },
+  reviewToggle: { fontSize: 12, fontWeight: '600', marginTop: 2 },
+  recScroll: { marginHorizontal: -4 },
+  recLoading: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
+  recLoadingText: { fontSize: 12 },
   modalBackdrop: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center', alignItems: 'center', paddingHorizontal: 28,
@@ -417,4 +847,10 @@ const styles = StyleSheet.create({
   modalButtons: { flexDirection: 'row', gap: 10, marginTop: 4 },
   modalBtn: { paddingVertical: 13, borderRadius: 12, alignItems: 'center', paddingHorizontal: 20 },
   modalBtnText: { fontSize: 14, fontWeight: '700' },
+  reminderTimeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  reminderTimeInput: {
+    borderWidth: 1, borderRadius: 12, width: 72, paddingVertical: 12,
+    fontSize: 28, fontWeight: '700', textAlign: 'center',
+  },
+  reminderColon: { fontSize: 28, fontWeight: '700' },
 });

@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import {
-  View, Text, ScrollView, Pressable, StyleSheet, Image,
+  View, Text, ScrollView, Pressable, StyleSheet, Image, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { useTheme } from '@/context/ThemeContext';
 import { useBooks, Book, ReadingSession } from '@/context/BooksContext';
 import { fonts } from '@/constants/tokens';
@@ -13,6 +16,7 @@ const MONTHS_TR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
+const MONTHS_TR_SHORT = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
 type ViewMode = 'monthly' | 'yearly';
 
@@ -62,6 +66,246 @@ function formatReadingTime(seconds: number): string {
   return `${seconds} sn`;
 }
 
+function ReadingHeatmap({ sessions, isDark, t }: { sessions: ReadingSession[]; isDark: boolean; t: any }) {
+  const HEAT = isDark
+    ? ['#1a1a1a', '#0d2e1e', '#165c3d', '#2a9b6a', '#4ecb91']
+    : ['#ede9e5', '#d4f0e5', '#9ed9c0', '#4db895', '#1ca070'];
+
+  const dayMap: Record<string, number> = {};
+  sessions.forEach((s) => {
+    const d = new Date(s.date);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    dayMap[key] = (dayMap[key] ?? 0) + s.duration;
+  });
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  // Current reading streak (consecutive days ending today or yesterday)
+  const streak = (() => {
+    let count = 0;
+    const d = new Date(today);
+    while (true) {
+      const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if ((dayMap[k] ?? 0) > 0) {
+        count++;
+        d.setDate(d.getDate() - 1);
+      } else break;
+    }
+    return count;
+  })();
+
+  // Active days this year
+  const thisYear = today.getFullYear();
+  const activeDaysThisYear = Object.entries(dayMap).filter(([k, v]) => parseInt(k.slice(0, 4)) === thisYear && v > 0).length;
+
+  // Build 52 weeks, aligned to Monday of the earliest week
+  const todayDow = (today.getDay() + 6) % 7; // 0=Mon…6=Sun
+  const gridStart = new Date(today);
+  gridStart.setDate(gridStart.getDate() - todayDow - 51 * 7);
+
+  const weeks: Array<Array<{ key: string; future: boolean }>> = [];
+  const cur = new Date(gridStart);
+  for (let w = 0; w < 52; w++) {
+    const week: Array<{ key: string; future: boolean }> = [];
+    for (let d = 0; d < 7; d++) {
+      const day = new Date(cur);
+      const k = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+      week.push({ key: k, future: day > today });
+      cur.setDate(cur.getDate() + 1);
+    }
+    weeks.push(week);
+  }
+
+  // Month label at first week of each month
+  const monthLabels: { label: string; wi: number }[] = [];
+  weeks.forEach((week, wi) => {
+    const firstDayDate = new Date(gridStart);
+    firstDayDate.setDate(firstDayDate.getDate() + wi * 7);
+    if (firstDayDate.getDate() <= 7) {
+      monthLabels.push({ label: MONTHS_TR_SHORT[firstDayDate.getMonth()], wi });
+    }
+  });
+
+  const CELL = 11;
+  const GAP = 2;
+  const STEP = CELL + GAP;
+
+  const getLevel = (secs: number): number => {
+    if (secs === 0) return 0;
+    const m = secs / 60;
+    if (m < 10) return 1;
+    if (m < 30) return 2;
+    if (m < 60) return 3;
+    return 4;
+  };
+
+  return (
+    <View style={[styles.card, { backgroundColor: t.surface, borderColor: t.border }]}>
+      <Text style={[styles.cardLabel, { color: t.muted }]}>OKUMA TAKVİMİ</Text>
+
+      <View style={styles.heatHeaderRow}>
+        {streak > 0 ? (
+          <Text style={[styles.analyticHeadline, { color: t.fg, fontFamily: fonts.serifMedium }]}>
+            {streak} günlük{' '}
+            <Text style={{ color: isDark ? '#4ecb91' : '#1ca070' }}>seri</Text>
+          </Text>
+        ) : (
+          <Text style={[styles.analyticHeadline, { color: t.fg, fontFamily: fonts.serifMedium }]}>
+            Bu yıl{' '}
+            <Text style={{ color: isDark ? '#4ecb91' : '#1ca070' }}>{activeDaysThisYear} gün</Text>
+            {' '}okuma yaptın
+          </Text>
+        )}
+        {streak > 0 && activeDaysThisYear > 0 && (
+          <Text style={[styles.heatSubNote, { color: t.muted }]}>
+            Bu yıl {activeDaysThisYear} gün
+          </Text>
+        )}
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+        <View>
+          {/* Month labels */}
+          <View style={{ height: 14, position: 'relative', width: 52 * STEP }}>
+            {monthLabels.map(({ label, wi }, i) => (
+              <Text
+                key={i}
+                style={{
+                  position: 'absolute',
+                  left: wi * STEP,
+                  fontSize: 9,
+                  fontWeight: '600',
+                  color: t.muted,
+                  letterSpacing: 0.3,
+                }}
+              >
+                {label}
+              </Text>
+            ))}
+          </View>
+
+          {/* Grid */}
+          <View style={{ flexDirection: 'row', gap: GAP }}>
+            {weeks.map((week, wi) => (
+              <View key={wi} style={{ gap: GAP }}>
+                {week.map(({ key, future }, di) => {
+                  const secs = future ? 0 : (dayMap[key] ?? 0);
+                  const level = getLevel(secs);
+                  const isToday = key === todayKey;
+                  return (
+                    <View
+                      key={di}
+                      style={{
+                        width: CELL,
+                        height: CELL,
+                        borderRadius: 2,
+                        backgroundColor: future ? 'transparent' : HEAT[level],
+                        borderWidth: isToday ? 1 : 0,
+                        borderColor: isDark ? '#F5F0E8' : '#151b28',
+                      }}
+                    />
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Legend */}
+      <View style={styles.heatLegend}>
+        <Text style={[styles.heatLegendTxt, { color: t.muted }]}>Az</Text>
+        {HEAT.map((color, i) => (
+          <View key={i} style={[styles.heatLegendCell, { backgroundColor: color }]} />
+        ))}
+        <Text style={[styles.heatLegendTxt, { color: t.muted }]}>Çok</Text>
+      </View>
+    </View>
+  );
+}
+
+function csvEscape(s: string): string {
+  return `"${String(s).replace(/"/g, '""')}"`;
+}
+
+function buildPdfHtml(
+  books: Book[],
+  periodLabel: string,
+  pages: number,
+  avg: string,
+  totalSecs: number,
+): string {
+  const formatTime = (s: number) => {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    if (h > 0 && m > 0) return `${h} sa ${m} dk`;
+    if (h > 0) return `${h} saat`;
+    return m > 0 ? `${m} dk` : '—';
+  };
+
+  const rows = books.map((b, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td><strong>${b.title}</strong></td>
+      <td>${b.author}</td>
+      <td>${b.genre || '—'}</td>
+      <td>${b.pages || '—'}</td>
+      <td>${b.rating > 0 ? '★'.repeat(b.rating) + '☆'.repeat(5 - b.rating) : '—'}</td>
+      <td>${b.readingTime ? formatTime(b.readingTime) : '—'}</td>
+      <td>${b.review ? b.review.slice(0, 80) + (b.review.length > 80 ? '…' : '') : '—'}</td>
+    </tr>`).join('');
+
+  return `<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<style>
+  body { font-family: Georgia, serif; color: #151b28; padding: 32px; max-width: 800px; margin: 0 auto; }
+  h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -1px; }
+  .sub { color: #656d81; font-size: 13px; margin-bottom: 24px; }
+  .stats { display: flex; gap: 20px; margin-bottom: 28px; }
+  .stat { background: #f9f7f5; border-radius: 10px; padding: 14px 18px; min-width: 80px; }
+  .stat-val { font-size: 26px; font-weight: 700; color: #151b28; }
+  .stat-lbl { font-size: 10px; color: #656d81; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+       color: #656d81; border-bottom: 2px solid #e5e0dc; padding: 8px 6px; }
+  td { padding: 10px 6px; border-bottom: 1px solid #f0eeec; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .footer { margin-top: 32px; font-size: 11px; color: #9ba1b0; border-top: 1px solid #e5e0dc; padding-top: 12px; }
+  .badge { display: inline-block; background: #151b28; color: #F5F0E8; padding: 3px 8px;
+           border-radius: 20px; font-size: 11px; font-weight: 700; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+  <div class="badge">ayraç</div>
+  <h1>${periodLabel} · Wrapped</h1>
+  <p class="sub">${books.length} kitap · Dışa aktarıldı: ${new Date().toLocaleDateString('tr-TR')}</p>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-val">${books.length}</div><div class="stat-lbl">Kitap</div></div>
+    <div class="stat"><div class="stat-val">${pages.toLocaleString('tr-TR')}</div><div class="stat-lbl">Sayfa</div></div>
+    <div class="stat"><div class="stat-val">${avg}</div><div class="stat-lbl">Ort. Puan</div></div>
+    ${totalSecs > 0 ? `<div class="stat"><div class="stat-val">${formatTime(totalSecs)}</div><div class="stat-lbl">Okuma</div></div>` : ''}
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th><th>Başlık</th><th>Yazar</th><th>Tür</th>
+        <th>Sayfa</th><th>Puan</th><th>Süre</th><th>Düşünce</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+
+  <div class="footer">ayraç · okuma takip uygulaması</div>
+</body>
+</html>`;
+}
+
 function EmptyWrapped({ t }: { t: any }) {
   return (
     <View style={styles.emptyContainer}>
@@ -79,7 +323,7 @@ function EmptyWrapped({ t }: { t: any }) {
 }
 
 export default function WrappedScreen() {
-  const { t } = useTheme();
+  const { t, isDark } = useTheme();
   const { books, sessions } = useBooks();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -87,6 +331,7 @@ export default function WrappedScreen() {
   const [view, setView] = useState<ViewMode>('monthly');
   const [monthIndex, setMonthIndex] = useState(new Date().getMonth());
   const [year, setYear] = useState(new Date().getFullYear());
+  const [exporting, setExporting] = useState<'csv' | 'pdf' | null>(null);
 
   const onPrev = () => {
     if (view === 'monthly') {
@@ -128,6 +373,48 @@ export default function WrappedScreen() {
 
   const periodLabel = view === 'monthly' ? `${MONTHS_TR[monthIndex]} ${year}` : `${year}`;
 
+  const handleExportCSV = async () => {
+    if (finished.length === 0) return;
+    setExporting('csv');
+    try {
+      const header = ['Sıra', 'Başlık', 'Yazar', 'Sayfa', 'Tür', 'Puan', 'Okuma Süresi (dk)', 'Düşünce', 'Tarih'];
+      const dataRows = finished.map((b, i) => [
+        String(i + 1),
+        csvEscape(b.title),
+        csvEscape(b.author),
+        String(b.pages || ''),
+        csvEscape(b.genre || ''),
+        String(b.rating || ''),
+        String(b.readingTime ? Math.round(b.readingTime / 60) : ''),
+        csvEscape(b.review || ''),
+        new Date(b.createdAt).toLocaleDateString('tr-TR'),
+      ]);
+      const csv = [header, ...dataRows].map((r) => r.join(',')).join('\n');
+      const slug = periodLabel.toLowerCase().replace(/\s+/g, '-');
+      const path = FileSystem.cacheDirectory + `ayrac-${slug}.csv`;
+      await FileSystem.writeAsStringAsync(path, csv, { encoding: FileSystem.EncodingType.UTF8 });
+      await Sharing.shareAsync(path, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (finished.length === 0) return;
+    setExporting('pdf');
+    try {
+      const html = buildPdfHtml(finished, periodLabel, pages, avg, totalReadingSeconds);
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf' });
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      setExporting(null);
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: t.bg }]}>
       {/* Header */}
@@ -165,6 +452,8 @@ export default function WrappedScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <ReadingHeatmap sessions={sessions} isDark={isDark} t={t} />
+
         {finished.length === 0 ? (
           <EmptyWrapped t={t} />
         ) : (
@@ -301,6 +590,40 @@ export default function WrappedScreen() {
                 </View>
               </View>
             )}
+
+            {/* Export */}
+            <View style={[styles.card, { backgroundColor: t.surface, borderColor: t.border }]}>
+              <Text style={[styles.cardLabel, { color: t.muted }]}>AKTAR</Text>
+              <Text style={[styles.exportDesc, { color: t.muted }]}>
+                {periodLabel} · {finished.length} kitap
+              </Text>
+              <View style={styles.exportBtns}>
+                <Pressable
+                  style={[styles.exportBtn, { backgroundColor: t.bgSoft, borderColor: t.border }]}
+                  onPress={handleExportCSV}
+                  disabled={exporting !== null}
+                >
+                  {exporting === 'csv' ? (
+                    <ActivityIndicator size="small" color={t.muted} />
+                  ) : (
+                    <Ionicons name="document-text-outline" size={16} color={t.fg} />
+                  )}
+                  <Text style={[styles.exportBtnText, { color: t.fg }]}>CSV</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.exportBtn, { backgroundColor: t.bgSoft, borderColor: t.border }]}
+                  onPress={handleExportPDF}
+                  disabled={exporting !== null}
+                >
+                  {exporting === 'pdf' ? (
+                    <ActivityIndicator size="small" color={t.muted} />
+                  ) : (
+                    <Ionicons name="document-outline" size={16} color={t.fg} />
+                  )}
+                  <Text style={[styles.exportBtnText, { color: t.fg }]}>PDF</Text>
+                </Pressable>
+              </View>
+            </View>
           </>
         )}
       </ScrollView>
@@ -354,6 +677,18 @@ const styles = StyleSheet.create({
   authorDot: { width: 6, height: 6, borderRadius: 3 },
   authorName: { flex: 1, fontSize: 13, fontWeight: '500' },
   authorCount: { fontSize: 12 },
+  heatHeaderRow: { marginBottom: 2 },
+  heatSubNote: { fontSize: 12, marginTop: 2 },
+  heatLegend: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10, justifyContent: 'flex-end' },
+  heatLegendTxt: { fontSize: 10, fontWeight: '500' },
+  heatLegendCell: { width: 11, height: 11, borderRadius: 2 },
+  exportDesc: { fontSize: 12, marginBottom: 12 },
+  exportBtns: { flexDirection: 'row', gap: 10 },
+  exportBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 13, borderRadius: 12, borderWidth: 1,
+  },
+  exportBtnText: { fontSize: 14, fontWeight: '700' },
   emptyContainer: { alignItems: 'center', paddingVertical: 48, gap: 10 },
   emptyIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   emptyTitle: { fontSize: 16, marginTop: 4 },
