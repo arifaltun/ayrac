@@ -360,7 +360,7 @@ type ViewMode = 'monthly' | 'yearly';
 
 export default function LibraryScreen() {
   const { t, isDark, toggle } = useTheme();
-  const { books, addBook } = useBooks();
+  const { books, addBook, resetAll } = useBooks();
   const { yearlyGoal, monthlyGoal, setYearlyGoal, setMonthlyGoal } = useGoal();
   const { isPro, showPaywall } = usePro();
   const insets = useSafeAreaInsets();
@@ -375,6 +375,8 @@ export default function LibraryScreen() {
   const [fetchingRecs, setFetchingRecs] = useState(false);
   const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
   const fetchedRef = useRef(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [resetConfirmVisible, setResetConfirmVisible] = useState(false);
   const [reminderVisible, setReminderVisible] = useState(false);
   const [reminder, setReminder] = useState<ReminderSettings>({ enabled: false, hour: 20, minute: 0 });
   const [reminderHourInput, setReminderHourInput] = useState('20');
@@ -523,6 +525,108 @@ export default function LibraryScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: t.bg }]}>
+      {/* Settings modal */}
+      <Modal visible={settingsVisible} transparent animationType="slide" onRequestClose={() => setSettingsVisible(false)}>
+        <Pressable style={styles.settingsBackdrop} onPress={() => setSettingsVisible(false)}>
+          <Pressable style={[styles.settingsCard, { backgroundColor: t.surface }]} onPress={() => {}}>
+            <View style={[styles.handle, { backgroundColor: t.border }]} />
+            <Text style={[styles.settingsTitle, { color: t.fg, fontFamily: fonts.serifMedium }]}>Ayarlar</Text>
+
+            {/* Pro status */}
+            {isPro ? (
+              <View style={[styles.settingsRow, { borderColor: t.border }]}>
+                <View style={styles.settingsRowLeft}>
+                  <Ionicons name="star" size={16} color={t.warning} />
+                  <Text style={[styles.settingsRowLabel, { color: t.fg }]}>Pro plan</Text>
+                </View>
+                <View style={[styles.proBadge, { backgroundColor: t.primarySoft }]}>
+                  <Text style={[styles.proBadgeText, { color: t.primary }]}>AKTİF</Text>
+                </View>
+              </View>
+            ) : (
+              <Pressable
+                style={[styles.settingsRow, styles.upgradeRow, { borderColor: t.primary, backgroundColor: t.primarySoft }]}
+                onPress={() => { setSettingsVisible(false); showPaywall('book_limit'); }}
+              >
+                <View style={styles.settingsRowLeft}>
+                  <Ionicons name="star-outline" size={16} color={t.primary} />
+                  <Text style={[styles.settingsRowLabel, { color: t.primary }]}>Pro'ya Geç · ₺29,99/ay</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={14} color={t.primary} />
+              </Pressable>
+            )}
+
+            <View style={[styles.settingsDivider, { backgroundColor: t.border }]} />
+
+            {/* Theme */}
+            <Pressable
+              style={[styles.settingsRow, { borderColor: t.border }]}
+              onPress={() => { toggle(); Haptics.selectionAsync(); }}
+            >
+              <View style={styles.settingsRowLeft}>
+                <Ionicons name={isDark ? 'moon-outline' : 'sunny-outline'} size={16} color={t.muted} />
+                <Text style={[styles.settingsRowLabel, { color: t.fg }]}>{isDark ? 'Karanlık tema' : 'Açık tema'}</Text>
+              </View>
+              <Text style={[styles.settingsRowMeta, { color: t.muted }]}>{isDark ? 'Açığa geç' : 'Karanlığa geç'}</Text>
+            </Pressable>
+
+            {/* Notifications */}
+            <Pressable
+              style={[styles.settingsRow, { borderColor: t.border }]}
+              onPress={() => { setSettingsVisible(false); openReminderModal(); }}
+            >
+              <View style={styles.settingsRowLeft}>
+                <Ionicons name={reminder.enabled ? 'notifications' : 'notifications-outline'} size={16} color={t.muted} />
+                <Text style={[styles.settingsRowLabel, { color: t.fg }]}>Günlük hatırlatıcı</Text>
+              </View>
+              <Text style={[styles.settingsRowMeta, { color: reminder.enabled ? t.primary : t.muted }]}>
+                {reminder.enabled ? `${String(reminder.hour).padStart(2,'0')}:${String(reminder.minute).padStart(2,'0')}` : 'Kapalı'}
+              </Text>
+            </Pressable>
+
+            <View style={[styles.settingsDivider, { backgroundColor: t.border }]} />
+
+            {/* Reset */}
+            <Pressable
+              style={[styles.settingsRow, { borderColor: t.border }]}
+              onPress={() => { setSettingsVisible(false); setResetConfirmVisible(true); }}
+            >
+              <View style={styles.settingsRowLeft}>
+                <Ionicons name="trash-outline" size={16} color={t.orange} />
+                <Text style={[styles.settingsRowLabel, { color: t.orange }]}>Tüm verileri sil</Text>
+              </View>
+            </Pressable>
+
+            <Text style={[styles.settingsVersion, { color: t.mutedStrong }]}>ayraç v1.0</Text>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Reset confirm modal */}
+      <Modal visible={resetConfirmVisible} transparent animationType="fade" onRequestClose={() => setResetConfirmVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: t.surface }]}>
+            <Text style={[styles.modalTitle, { color: t.fg, fontFamily: fonts.serifMedium }]}>Verileri sil</Text>
+            <Text style={[styles.modalDesc, { color: t.muted }]}>Tüm kitaplar, okuma süreleri ve istatistikler kalıcı olarak silinecek. Bu işlem geri alınamaz.</Text>
+            <View style={styles.modalButtons}>
+              <Pressable style={[styles.modalBtn, { backgroundColor: t.bgSoft }]} onPress={() => setResetConfirmVisible(false)}>
+                <Text style={[styles.modalBtnText, { color: t.muted }]}>İptal</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalBtn, { backgroundColor: t.orange, flex: 1 }]}
+                onPress={async () => {
+                  await resetAll();
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                  setResetConfirmVisible(false);
+                }}
+              >
+                <Text style={[styles.modalBtnText, { color: '#fff' }]}>Sil</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Reminder modal */}
       <Modal visible={reminderVisible} transparent animationType="fade" onRequestClose={() => setReminderVisible(false)}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -626,11 +730,11 @@ export default function LibraryScreen() {
           </Pressable>
           <Pressable
             style={[styles.iconBtn, { backgroundColor: t.surface, borderColor: t.border }]}
-            onPress={toggle}
-            accessibilityLabel={isDark ? 'Açık temaya geç' : 'Karanlık temaya geç'}
+            onPress={() => setSettingsVisible(true)}
+            accessibilityLabel="Ayarlar"
             accessibilityRole="button"
           >
-            <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={14} color={t.muted} />
+            <Ionicons name="settings-outline" size={14} color={t.muted} />
           </Pressable>
           <View style={[styles.viewToggle, { backgroundColor: t.surface, borderColor: t.border }]}>
             {(['monthly', 'yearly'] as ViewMode[]).map((v) => (
@@ -894,4 +998,26 @@ const styles = StyleSheet.create({
     fontSize: 28, fontWeight: '700', textAlign: 'center',
   },
   reminderColon: { fontSize: 28, fontWeight: '700' },
+  settingsBackdrop: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end',
+  },
+  settingsCard: {
+    width: '100%', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 24, paddingBottom: 40,
+  },
+  handle: {
+    width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16,
+  },
+  settingsTitle: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3, marginBottom: 12 },
+  settingsRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14,
+  },
+  settingsRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  settingsRowLabel: { fontSize: 15, fontWeight: '500' },
+  settingsRowMeta: { fontSize: 13 },
+  proBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  proBadgeText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  upgradeRow: { borderRadius: 12, paddingHorizontal: 12, borderWidth: 1 },
+  settingsDivider: { height: 1, marginVertical: 4 },
+  settingsVersion: { fontSize: 11, textAlign: 'center', marginTop: 20 },
 });

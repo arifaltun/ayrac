@@ -30,6 +30,7 @@ type BooksContextValue = {
   updateBook: (book: Book) => void;
   deleteBook: (id: string) => void;
   addSession: (data: Omit<ReadingSession, 'id'>) => void;
+  resetAll: () => Promise<void>;
 };
 
 const BOOKS_KEY = '@ayrac_books';
@@ -42,6 +43,7 @@ const BooksContext = createContext<BooksContextValue>({
   updateBook: () => {},
   deleteBook: () => {},
   addSession: () => {},
+  resetAll: async () => {},
 });
 
 export function BooksProvider({ children }: { children: React.ReactNode }) {
@@ -83,8 +85,14 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
     persistSessions([...sessions, session]);
   };
 
+  const resetAll = async () => {
+    await AsyncStorage.multiRemove([BOOKS_KEY, SESSIONS_KEY]);
+    setBooks([]);
+    setSessions([]);
+  };
+
   return (
-    <BooksContext.Provider value={{ books, sessions, addBook, updateBook, deleteBook, addSession }}>
+    <BooksContext.Provider value={{ books, sessions, addBook, updateBook, deleteBook, addSession, resetAll }}>
       {children}
     </BooksContext.Provider>
   );
