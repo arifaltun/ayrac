@@ -241,7 +241,7 @@ export default function AddBookScreen() {
           <CameraView
             style={StyleSheet.absoluteFill}
             facing="back"
-            barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'isbn13'] }}
+            barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8'] }}
             onBarcodeScanned={scanLoading ? undefined : handleBarcode}
           />
           <View style={styles.scannerOverlay}>
