@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/context/ThemeContext';
 import { useBooks, Book } from '@/context/BooksContext';
+import { usePro } from '@/context/ProContext';
 import { fonts, BOOK_COLORS } from '@/constants/tokens';
 import { ScalePressable } from '@/components/ScalePressable';
 
@@ -63,6 +64,7 @@ type Status = 'reading' | 'finished' | 'want';
 export default function EditBookScreen() {
   const { t } = useTheme();
   const { books, updateBook, deleteBook } = useBooks();
+  const { isPro, showPaywall } = usePro();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -333,7 +335,11 @@ export default function EditBookScreen() {
             <ScalePressable
               scale={0.97}
               style={[styles.shareBtn, { borderColor: t.border }]}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push({ pathname: '/share-book' as any, params: { id: book.id } }); }}
+              onPress={() => {
+                if (!isPro) { showPaywall('bitirdim_card'); return; }
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push({ pathname: '/share-book' as any, params: { id: book.id } });
+              }}
             >
               <Ionicons name="share-outline" size={14} color={t.muted} />
               <Text style={[styles.shareTxt, { color: t.muted }]}>BİTİRDİM kartını paylaş</Text>

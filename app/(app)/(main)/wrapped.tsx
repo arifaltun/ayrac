@@ -10,6 +10,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useTheme } from '@/context/ThemeContext';
 import { useBooks, Book, ReadingSession } from '@/context/BooksContext';
+import { usePro } from '@/context/ProContext';
 import { fonts } from '@/constants/tokens';
 
 const MONTHS_TR = [
@@ -322,9 +323,17 @@ function EmptyWrapped({ t }: { t: any }) {
   );
 }
 
+function isOlderThan3Months(monthIndex: number, year: number): boolean {
+  const today = new Date();
+  const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+  const period = new Date(year, monthIndex, 1);
+  return period < threeMonthsAgo;
+}
+
 export default function WrappedScreen() {
   const { t, isDark } = useTheme();
   const { books, sessions } = useBooks();
+  const { isPro, showPaywall } = usePro();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -335,8 +344,14 @@ export default function WrappedScreen() {
 
   const onPrev = () => {
     if (view === 'monthly') {
+      const newMonth = monthIndex === 0 ? 11 : monthIndex - 1;
+      const newYear = monthIndex === 0 ? year - 1 : year;
+      if (!isPro && isOlderThan3Months(newMonth, newYear)) { showPaywall('history'); return; }
       monthIndex === 0 ? (setMonthIndex(11), setYear((y) => y - 1)) : setMonthIndex((m) => m - 1);
-    } else setYear((y) => y - 1);
+    } else {
+      if (!isPro && year - 1 < new Date().getFullYear() - 0) { showPaywall('history'); return; }
+      setYear((y) => y - 1);
+    }
   };
   const onNext = () => {
     if (view === 'monthly') {

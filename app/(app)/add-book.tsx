@@ -11,6 +11,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/context/ThemeContext';
 import { useBooks } from '@/context/BooksContext';
+import { usePro } from '@/context/ProContext';
 import { fonts, BOOK_COLORS } from '@/constants/tokens';
 
 function BookCover({ title, color, coverImage }: { title: string; color: string; coverImage?: string }) {
@@ -73,7 +74,8 @@ function coverUrl(coverId: number) {
 
 export default function AddBookScreen() {
   const { t } = useTheme();
-  const { addBook } = useBooks();
+  const { addBook, books } = useBooks();
+  const { isPro, showPaywall } = usePro();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -190,6 +192,7 @@ export default function AddBookScreen() {
 
   const handleSubmit = () => {
     if (!canSubmit) return;
+    if (!isPro && books.length >= 5) { showPaywall('book_limit'); return; }
     addBook({
       title: title.trim(),
       author: author.trim(),

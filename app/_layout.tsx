@@ -11,6 +11,7 @@ import {
 import { ThemeProvider } from '@/context/ThemeContext';
 import { BooksProvider } from '@/context/BooksContext';
 import { GoalProvider } from '@/context/GoalContext';
+import { ProProvider } from '@/context/ProContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -31,6 +32,7 @@ export default function RootLayout() {
     <ThemeProvider>
       <BooksProvider>
       <GoalProvider>
+      <ProProvider>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="splash" />
@@ -39,6 +41,7 @@ export default function RootLayout() {
           <Stack.Screen name="(app)" />
         </Stack>
         <StatusBar style="light" />
+      </ProProvider>
       </GoalProvider>
       </BooksProvider>
     </ThemeProvider>

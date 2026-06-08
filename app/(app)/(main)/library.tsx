@@ -12,6 +12,7 @@ import { useBooks, Book } from '@/context/BooksContext';
 import { useGoal } from '@/context/GoalContext';
 import { fonts, BOOK_COLORS } from '@/constants/tokens';
 import { ScalePressable } from '@/components/ScalePressable';
+import { usePro } from '@/context/ProContext';
 import {
   loadReminderSettings, saveReminderSettings, scheduleReminder,
   cancelReminder, requestNotificationPermission, ReminderSettings,
@@ -361,6 +362,7 @@ export default function LibraryScreen() {
   const { t, isDark, toggle } = useTheme();
   const { books, addBook } = useBooks();
   const { yearlyGoal, monthlyGoal, setYearlyGoal, setMonthlyGoal } = useGoal();
+  const { isPro, showPaywall } = usePro();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [view, setView] = useState<ViewMode>('monthly');
@@ -499,8 +501,17 @@ export default function LibraryScreen() {
     fetchedRef.current = false; // allow re-fetch with updated ownTitles next time
   };
 
+  const isOlderThan3Months = (mi: number, yr: number) => {
+    const today = new Date();
+    const cutoff = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+    return new Date(yr, mi, 1) < cutoff;
+  };
+
   const onPrev = () => {
     if (view === 'monthly') {
+      const newM = monthIndex === 0 ? 11 : monthIndex - 1;
+      const newY = monthIndex === 0 ? year - 1 : year;
+      if (!isPro && isOlderThan3Months(newM, newY)) { showPaywall('history'); return; }
       monthIndex === 0 ? (setMonthIndex(11), setYear((y) => y - 1)) : setMonthIndex((m) => m - 1);
     } else setYear((y) => y - 1);
   };
