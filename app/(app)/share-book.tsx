@@ -1,8 +1,10 @@
 import { useRef, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Pressable, Dimensions,
-  ActivityIndicator, Image, ScrollView, Animated,
+  ActivityIndicator, Image, ScrollView,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -177,20 +179,21 @@ export default function ShareBookScreen() {
   const [saved, setSaved] = useState(false);
   const viewShotRef = useRef<ViewShot>(null);
 
-  const animVal = useRef(new Animated.Value(1)).current;
+  const sv = useSharedValue(0.88);
+  const cardAnim = useAnimatedStyle(() => ({ transform: [{ scale: sv.value }] }));
 
   const animateChange = (cb: () => void) => {
-    Animated.sequence([
-      Animated.timing(animVal, { toValue: 0.93, duration: 100, useNativeDriver: true }),
-      Animated.timing(animVal, { toValue: 1, duration: 180, useNativeDriver: true }),
-    ]).start();
+    sv.value = withSequence(
+      withSpring(0.93, { damping: 12, stiffness: 500 }),
+      withSpring(1, { damping: 10, stiffness: 280 }),
+    );
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     cb();
   };
 
   // Entrance animation
   useEffect(() => {
-    animVal.setValue(0.88);
-    Animated.spring(animVal, { toValue: 1, tension: 60, friction: 10, useNativeDriver: true }).start();
+    sv.value = withSpring(1, { damping: 14, stiffness: 140 });
   }, []);
 
   if (!book) { router.back(); return null; }
@@ -261,7 +264,7 @@ export default function ShareBookScreen() {
 
       {/* Card preview */}
       <View style={styles.previewContainer}>
-        <Animated.View style={{ transform: [{ scale: animVal }] }}>
+        <Animated.View style={cardAnim}>
           <ViewShot
             ref={viewShotRef}
             options={{ format: 'png', quality: 1 }}
@@ -326,7 +329,7 @@ export default function ShareBookScreen() {
         )}
         <Pressable
           style={[styles.actionBtn, styles.actionBtnPrimary]}
-          onPress={handleShare}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); handleShare(); }}
           disabled={loading}
         >
           {loading ? (
@@ -340,7 +343,7 @@ export default function ShareBookScreen() {
         </Pressable>
         <Pressable
           style={[styles.actionBtn, styles.actionBtnSecondary]}
-          onPress={handleSaveToGallery}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleSaveToGallery(); }}
           disabled={loading}
         >
           <Ionicons name="download-outline" size={16} color="rgba(255,255,255,0.7)" />

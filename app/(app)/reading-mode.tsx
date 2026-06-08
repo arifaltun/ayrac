@@ -2,11 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, Pressable, Modal, Linking, Platform,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useBooks, Book } from '@/context/BooksContext';
 import { fonts } from '@/constants/tokens';
+import { ScalePressable } from '@/components/ScalePressable';
 
 function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -64,6 +66,7 @@ export default function ReadingModeScreen() {
       readingTime: (book.readingTime ?? 0) + sessionSeconds,
     };
     updateBook(updated);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
   };
 
@@ -86,12 +89,12 @@ export default function ReadingModeScreen() {
             <Text style={styles.promptTitle}>Telefonunu da sessiz yapmak ister misin?</Text>
             <Text style={styles.promptDesc}>Okuma sırasında bildirimler seni rahatsız etmesin.</Text>
             <View style={styles.promptButtons}>
-              <Pressable style={styles.promptBtnOutline} onPress={() => setSilentPromptVisible(false)}>
+              <ScalePressable scale={0.96} style={styles.promptBtnOutline} onPress={() => { Haptics.selectionAsync(); setSilentPromptVisible(false); }}>
                 <Text style={styles.promptBtnOutlineText}>Hayır</Text>
-              </Pressable>
-              <Pressable style={styles.promptBtnFill} onPress={openSilentSettings}>
+              </ScalePressable>
+              <ScalePressable scale={0.96} style={styles.promptBtnFill} onPress={openSilentSettings}>
                 <Text style={styles.promptBtnFillText}>Ayarlara git</Text>
-              </Pressable>
+              </ScalePressable>
             </View>
           </View>
         </View>
@@ -113,12 +116,12 @@ export default function ReadingModeScreen() {
               Toplam: {formatTotalTime(totalAfter)}
             </Text>
             <View style={styles.promptButtons}>
-              <Pressable style={styles.promptBtnOutline} onPress={() => setFinishConfirmVisible(false)}>
+              <ScalePressable scale={0.96} style={styles.promptBtnOutline} onPress={() => { Haptics.selectionAsync(); setFinishConfirmVisible(false); }}>
                 <Text style={styles.promptBtnOutlineText}>Devam et</Text>
-              </Pressable>
-              <Pressable style={styles.promptBtnFill} onPress={handleFinish}>
+              </ScalePressable>
+              <ScalePressable scale={0.97} style={styles.promptBtnFill} onPress={handleFinish}>
                 <Text style={styles.promptBtnFillText}>Kaydet</Text>
-              </Pressable>
+              </ScalePressable>
             </View>
           </View>
         </View>
@@ -126,7 +129,7 @@ export default function ReadingModeScreen() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Pressable onPress={() => setFinishConfirmVisible(true)} style={styles.closeBtn}>
+        <Pressable onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFinishConfirmVisible(true); }} style={styles.closeBtn}>
           <Ionicons name="chevron-down" size={22} color="rgba(255,255,255,0.5)" />
         </Pressable>
         <Text style={styles.headerLabel}>OKUMA MODU</Text>
@@ -153,12 +156,13 @@ export default function ReadingModeScreen() {
       {/* Finish button */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
         <Text style={styles.footerHint}>Telefonu bırak, kitabını oku.</Text>
-        <Pressable
+        <ScalePressable
+          scale={0.96}
           style={styles.finishBtn}
-          onPress={() => setFinishConfirmVisible(true)}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setFinishConfirmVisible(true); }}
         >
           <Text style={styles.finishBtnText}>Bitti</Text>
-        </Pressable>
+        </ScalePressable>
       </View>
     </View>
   );

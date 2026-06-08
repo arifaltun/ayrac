@@ -4,6 +4,8 @@ import {
   StyleSheet, KeyboardAvoidingView, Platform,
   Image, Modal,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/context/ThemeContext';
 import { useBooks, Book } from '@/context/BooksContext';
 import { fonts, BOOK_COLORS } from '@/constants/tokens';
+import { ScalePressable } from '@/components/ScalePressable';
 
 function BookCover({ title, color, coverImage, size = 76 }: { title: string; color: string; coverImage?: string; size?: number }) {
   if (coverImage) {
@@ -28,6 +31,30 @@ function BookCover({ title, color, coverImage, size = 76 }: { title: string; col
       <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: 'rgba(0,0,0,0.18)' }} />
       <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: size * 0.35, fontWeight: '700' }}>{letter}</Text>
     </View>
+  );
+}
+
+function AnimatedStar({ active, onPress, size = 28, activeColor, inactiveColor }: {
+  active: boolean; onPress: () => void; size?: number; activeColor: string; inactiveColor: string;
+}) {
+  const sv = useSharedValue(1);
+  const anim = useAnimatedStyle(() => ({ transform: [{ scale: sv.value }] }));
+
+  const handlePress = () => {
+    sv.value = withSequence(
+      withSpring(1.45, { damping: 6, stiffness: 500 }),
+      withSpring(1, { damping: 10, stiffness: 300 }),
+    );
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress();
+  };
+
+  return (
+    <Pressable onPress={handlePress} hitSlop={6}>
+      <Animated.View style={anim}>
+        <Ionicons name={active ? 'star' : 'star-outline'} size={size} color={active ? activeColor : inactiveColor} />
+      </Animated.View>
+    </Pressable>
   );
 }
 
@@ -208,7 +235,7 @@ export default function EditBookScreen() {
               {([['reading', 'Okunuyor'], ['finished', 'Bitti'], ['want', 'Okuyacağım']] as [Status, string][]).map(([k, lbl]) => (
                 <Pressable
                   key={k}
-                  onPress={() => setStatus(k)}
+                  onPress={() => { Haptics.selectionAsync(); setStatus(k); }}
                   style={[
                     styles.statusBtn,
                     { borderColor: status === k ? t.primary : t.border, backgroundColor: status === k ? t.primarySoft : t.bgSoft },
@@ -225,9 +252,13 @@ export default function EditBookScreen() {
               <Text style={[styles.fieldLabel, { color: t.muted }]}>PUANIN</Text>
               <View style={styles.starsRow}>
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <Pressable key={i} onPress={() => setRating(i === rating ? 0 : i)}>
-                    <Ionicons name={i <= rating ? 'star' : 'star-outline'} size={28} color={i <= rating ? t.warning : t.border} />
-                  </Pressable>
+                  <AnimatedStar
+                    key={i}
+                    active={i <= rating}
+                    onPress={() => setRating(i === rating ? 0 : i)}
+                    activeColor={t.warning}
+                    inactiveColor={t.border}
+                  />
                 ))}
               </View>
             </View>
@@ -283,24 +314,33 @@ export default function EditBookScreen() {
             </Pressable>
           )}
 
-          <Pressable style={[styles.submit, { backgroundColor: t.primary }]} onPress={handleSave}>
+          <ScalePressable
+            scale={0.97}
+            style={[styles.submit, { backgroundColor: t.primary }]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); handleSave(); }}
+          >
             <Text style={styles.submitText}>Değişiklikleri kaydet</Text>
-          </Pressable>
+          </ScalePressable>
 
           {status === 'finished' && (
-            <Pressable
+            <ScalePressable
+              scale={0.97}
               style={[styles.shareBtn, { borderColor: t.border }]}
-              onPress={() => router.push({ pathname: '/share-book' as any, params: { id: book.id } })}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push({ pathname: '/share-book' as any, params: { id: book.id } }); }}
             >
               <Ionicons name="share-outline" size={14} color={t.muted} />
               <Text style={[styles.shareTxt, { color: t.muted }]}>BİTİRDİM kartını paylaş</Text>
-            </Pressable>
+            </ScalePressable>
           )}
 
-          <Pressable style={[styles.deleteBtn, { borderColor: t.border }]} onPress={handleDelete}>
+          <ScalePressable
+            scale={0.97}
+            style={[styles.deleteBtn, { borderColor: t.border }]}
+            onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning); handleDelete(); }}
+          >
             <Ionicons name="trash-outline" size={14} color={t.orange} />
             <Text style={[styles.deleteTxt, { color: t.orange }]}>Kitabı sil</Text>
-          </Pressable>
+          </ScalePressable>
         </ScrollView>
       </View>
     </KeyboardAvoidingView>

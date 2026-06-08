@@ -6,10 +6,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/context/ThemeContext';
 import { useBooks, Book } from '@/context/BooksContext';
 import { useGoal } from '@/context/GoalContext';
 import { fonts, BOOK_COLORS } from '@/constants/tokens';
+import { ScalePressable } from '@/components/ScalePressable';
 import {
   loadReminderSettings, saveReminderSettings, scheduleReminder,
   cancelReminder, requestNotificationPermission, ReminderSettings,
@@ -72,8 +74,9 @@ function BookRow({ book }: { book: Book }) {
   const badgeLabel = isReading ? 'Devam' : isWant ? 'Okuyacağım' : 'Bitti';
 
   return (
-    <Pressable
-      onPress={() => router.push({ pathname: '/edit-book' as any, params: { id: book.id } })}
+    <ScalePressable
+      scale={0.97}
+      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push({ pathname: '/edit-book' as any, params: { id: book.id } }); }}
       style={[styles.bookRow, { backgroundColor: t.surface, borderColor }]}
     >
       <BookCover color={book.color} size={44} coverImage={book.coverImage} />
@@ -103,7 +106,7 @@ function BookRow({ book }: { book: Book }) {
       <View style={[styles.badge, { backgroundColor: badgeBg }]}>
         <Text style={[styles.badgeText, { color: badgeColor }]}>{badgeLabel}</Text>
       </View>
-    </Pressable>
+    </ScalePressable>
   );
 }
 
@@ -340,13 +343,14 @@ function EmptyState() {
       <Text style={[styles.emptyDesc, { color: t.muted }]}>
         İlk kitabını ekle; ay sonunda kişisel özetin hazır olsun.
       </Text>
-      <Pressable
+      <ScalePressable
+        scale={0.96}
         style={[styles.emptyButton, { backgroundColor: t.primary }]}
-        onPress={() => router.push('/add-book' as any)}
+        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push('/add-book' as any); }}
       >
         <Ionicons name="add" size={14} color="#000" />
         <Text style={[styles.emptyButtonText, { color: '#000' }]}>İlk kitabı ekle</Text>
-      </Pressable>
+      </ScalePressable>
     </View>
   );
 }
@@ -736,13 +740,14 @@ export default function LibraryScreen() {
               </>
             )}
 
-            <Pressable
+            <ScalePressable
+              scale={0.97}
               style={[styles.addRow, { borderColor: t.borderStrong }]}
-              onPress={() => router.push('/add-book' as any)}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/add-book' as any); }}
             >
               <Ionicons name="add" size={14} color={t.muted} />
               <Text style={[styles.addRowText, { color: t.muted }]}>Kitap ekle</Text>
-            </Pressable>
+            </ScalePressable>
           </>
         )}
       </ScrollView>
