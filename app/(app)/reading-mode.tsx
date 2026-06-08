@@ -129,7 +129,12 @@ export default function ReadingModeScreen() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Pressable onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFinishConfirmVisible(true); }} style={styles.closeBtn}>
+        <Pressable
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFinishConfirmVisible(true); }}
+          style={styles.closeBtn}
+          accessibilityLabel="Okumayı bitir"
+          accessibilityRole="button"
+        >
           <Ionicons name="chevron-down" size={22} color="rgba(255,255,255,0.5)" />
         </Pressable>
         <Text style={styles.headerLabel}>OKUMA MODU</Text>
@@ -160,6 +165,8 @@ export default function ReadingModeScreen() {
           scale={0.96}
           style={styles.finishBtn}
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setFinishConfirmVisible(true); }}
+          accessibilityLabel="Okuma oturumunu bitir"
+          accessibilityRole="button"
         >
           <Text style={styles.finishBtnText}>Bitti</Text>
         </ScalePressable>

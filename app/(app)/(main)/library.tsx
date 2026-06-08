@@ -608,12 +608,16 @@ export default function LibraryScreen() {
           <Pressable
             style={[styles.iconBtn, { backgroundColor: t.surface, borderColor: reminder.enabled ? t.primary : t.border }]}
             onPress={openReminderModal}
+            accessibilityLabel={reminder.enabled ? 'Günlük hatırlatıcıyı düzenle' : 'Günlük hatırlatıcı kur'}
+            accessibilityRole="button"
           >
             <Ionicons name={reminder.enabled ? 'notifications' : 'notifications-outline'} size={14} color={reminder.enabled ? t.primary : t.muted} />
           </Pressable>
           <Pressable
             style={[styles.iconBtn, { backgroundColor: t.surface, borderColor: t.border }]}
             onPress={toggle}
+            accessibilityLabel={isDark ? 'Açık temaya geç' : 'Karanlık temaya geç'}
+            accessibilityRole="button"
           >
             <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={14} color={t.muted} />
           </Pressable>
@@ -635,11 +639,11 @@ export default function LibraryScreen() {
 
       {/* Period nav */}
       <View style={styles.periodRow}>
-        <Pressable onPress={onPrev} style={styles.periodBtn}>
+        <Pressable onPress={onPrev} style={styles.periodBtn} accessibilityLabel="Önceki dönem" accessibilityRole="button">
           <Ionicons name="chevron-back" size={16} color={t.muted} />
         </Pressable>
         <Text style={[styles.periodLabel, { color: t.fg }]}>{periodLabel}</Text>
-        <Pressable onPress={onNext} style={styles.periodBtn}>
+        <Pressable onPress={onNext} style={styles.periodBtn} accessibilityLabel="Sonraki dönem" accessibilityRole="button">
           <Ionicons name="chevron-forward" size={16} color={t.muted} />
         </Pressable>
       </View>
@@ -765,26 +769,26 @@ const styles = StyleSheet.create({
   logoMark: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   logoText: { fontSize: 26, letterSpacing: -0.5 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  iconBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  iconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   viewToggle: { flexDirection: 'row', borderRadius: 999, padding: 2, borderWidth: 1 },
   viewBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
   viewBtnText: { fontSize: 11, fontWeight: '500' },
   periodRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 22, paddingBottom: 4,
+    paddingHorizontal: 20, paddingBottom: 4,
   },
-  periodBtn: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+  periodBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   periodLabel: { fontSize: 13, fontWeight: '600', letterSpacing: -0.2 },
-  statsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingVertical: 10 },
+  statsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingVertical: 8 },
   statBox: { flex: 1, borderRadius: 14, padding: 12, borderWidth: 1 },
   statLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase' },
   statValue: { fontSize: 34, lineHeight: 38, marginTop: 4, letterSpacing: -0.5 },
   statSub: { fontSize: 11, marginTop: 3 },
-  listContent: { paddingHorizontal: 20, paddingBottom: 16, gap: 7 },
-  sectionHeader: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginTop: 6, marginBottom: 2 },
+  listContent: { paddingHorizontal: 20, paddingBottom: 16, gap: 8 },
+  sectionHeader: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginTop: 14, marginBottom: 4 },
   bookRow: {
     flexDirection: 'row', alignItems: 'center', gap: 11,
-    borderRadius: 12, padding: 9, borderWidth: 1,
+    borderRadius: 12, padding: 11, borderWidth: 1,
   },
   bookTitle: { fontSize: 15, fontWeight: '600', letterSpacing: -0.2 },
   bookAuthor: { fontSize: 13, marginTop: 1 },
@@ -828,7 +832,7 @@ const styles = StyleSheet.create({
   },
   reviewRowTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   reviewEditBtn: {
-    width: 28, height: 28, borderRadius: 8,
+    width: 36, height: 36, borderRadius: 8,
     alignItems: 'center', justifyContent: 'center',
   },
   reviewText: { fontSize: 13, lineHeight: 19, letterSpacing: 0.1 },

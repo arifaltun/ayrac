@@ -177,6 +177,8 @@ export default function EditBookScreen() {
           <Pressable
             onPress={() => router.back()}
             style={[styles.closeBtn, { backgroundColor: t.bgSoft }]}
+            accessibilityLabel="Kapat"
+            accessibilityRole="button"
           >
             <Ionicons name="close" size={14} color={t.muted} />
           </Pressable>
@@ -196,7 +198,10 @@ export default function EditBookScreen() {
                 {BOOK_COLORS.map((c) => (
                   <Pressable
                     key={c}
-                    onPress={() => setColor(c)}
+                    onPress={() => { Haptics.selectionAsync(); setColor(c); }}
+                    hitSlop={10}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: color === c }}
                     style={[
                       styles.colorSwatch,
                       { backgroundColor: c },
@@ -271,10 +276,10 @@ export default function EditBookScreen() {
                 <Text style={[
                   styles.charCount,
                   {
-                    color: review.length > 0 && review.length < 50
+                    color: review.length > 260
                       ? t.orange
-                      : review.length > 260
-                      ? '#e55'
+                      : review.length > 0 && review.length < 50
+                      ? t.warning
                       : t.muted,
                   },
                 ]}>
@@ -297,7 +302,7 @@ export default function EditBookScreen() {
                 </Text>
               )}
               {review.length >= 50 && (
-                <Text style={[styles.reviewHint, { color: '#4ecb91' }]}>
+                <Text style={[styles.reviewHint, { color: t.accent }]}>
                   Düşünceni paylaşım kartına ekleyebilirsin
                 </Text>
               )}
@@ -318,6 +323,8 @@ export default function EditBookScreen() {
             scale={0.97}
             style={[styles.submit, { backgroundColor: t.primary }]}
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); handleSave(); }}
+            accessibilityLabel="Değişiklikleri kaydet"
+            accessibilityRole="button"
           >
             <Text style={styles.submitText}>Değişiklikleri kaydet</Text>
           </ScalePressable>
@@ -337,6 +344,8 @@ export default function EditBookScreen() {
             scale={0.97}
             style={[styles.deleteBtn, { borderColor: t.border }]}
             onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning); handleDelete(); }}
+            accessibilityLabel="Kitabı sil"
+            accessibilityRole="button"
           >
             <Ionicons name="trash-outline" size={14} color={t.orange} />
             <Text style={[styles.deleteTxt, { color: t.orange }]}>Kitabı sil</Text>
@@ -359,7 +368,7 @@ const styles = StyleSheet.create({
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 14 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   sheetTitle: { fontSize: 20, fontWeight: '700', letterSpacing: -0.5 },
-  closeBtn: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  closeBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   coverRow: { flexDirection: 'row', gap: 14, alignItems: 'center', marginBottom: 14 },
   colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
   colorSwatch: { width: 22, height: 22, borderRadius: 11 },
@@ -369,10 +378,10 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 3, elevation: 2,
   },
-  field: { marginBottom: 10 },
+  field: { marginBottom: 12 },
   fieldRow: { flexDirection: 'row', gap: 8 },
-  fieldLabel: { fontSize: 9, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 },
-  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 13 },
+  fieldLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 5 },
+  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 14 },
   statusRow: { flexDirection: 'row', gap: 8 },
   statusBtn: { flex: 1, paddingVertical: 9, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
   starsRow: { flexDirection: 'row', gap: 4 },
@@ -385,8 +394,8 @@ const styles = StyleSheet.create({
     gap: 8, padding: 13, borderRadius: 12, borderWidth: 1, marginTop: 8,
   },
   readingModeTxt: { fontSize: 13, fontWeight: '600' },
-  submit: { padding: 12, borderRadius: 12, alignItems: 'center', marginTop: 8, marginBottom: 8 },
-  submitText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  submit: { padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 8, marginBottom: 8 },
+  submitText: { color: '#000', fontSize: 14, fontWeight: '700' },
   shareBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 6, borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 8,
