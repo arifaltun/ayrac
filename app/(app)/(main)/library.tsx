@@ -648,6 +648,21 @@ export default function LibraryScreen() {
         </View>
       </View>
 
+      {/* Free tier banner */}
+      {!isPro && books.length >= 3 && (
+        <Pressable
+          style={[styles.freeBanner, { backgroundColor: t.surface, borderColor: t.border }]}
+          onPress={() => showPaywall('book_limit')}
+          accessibilityRole="button"
+          accessibilityLabel="Pro'ya geç"
+        >
+          <Text style={[styles.freeBannerText, { color: t.muted }]}>
+            <Text style={{ color: t.fg, fontWeight: '600' }}>{books.length}/5</Text> kitap · Sınırsız için Pro'ya geç
+          </Text>
+          <Ionicons name="chevron-forward" size={12} color={t.mutedStrong} />
+        </Pressable>
+      )}
+
       {/* Period nav */}
       <View style={styles.periodRow}>
         <Pressable onPress={onPrev} style={styles.periodBtn} accessibilityLabel="Önceki dönem" accessibilityRole="button">
@@ -784,6 +799,12 @@ const styles = StyleSheet.create({
   viewToggle: { flexDirection: 'row', borderRadius: 999, padding: 2, borderWidth: 1 },
   viewBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
   viewBtnText: { fontSize: 11, fontWeight: '500' },
+  freeBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginHorizontal: 20, marginBottom: 4, paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 10, borderWidth: 1,
+  },
+  freeBannerText: { fontSize: 12 },
   periodRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingBottom: 4,

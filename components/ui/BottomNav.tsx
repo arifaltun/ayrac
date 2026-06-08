@@ -1,8 +1,10 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/context/ThemeContext';
+import { ScalePressable } from '@/components/ScalePressable';
 
 export function BottomNav() {
   const { t } = useTheme();
@@ -24,43 +26,39 @@ export function BottomNav() {
         },
       ]}
     >
-      {/* Kitaplık */}
-      <Pressable
+      <ScalePressable
+        scale={0.92}
         style={styles.tab}
-        onPress={() => router.push('/library' as any)}
+        onPress={() => { Haptics.selectionAsync(); router.push('/library' as any); }}
+        accessibilityLabel="Kitaplık"
+        accessibilityRole="tab"
+        accessibilityState={{ selected: isLibrary }}
       >
-        <Ionicons
-          name="book-outline"
-          size={22}
-          color={isLibrary ? t.primary : t.muted}
-        />
-        <Text style={[styles.label, { color: isLibrary ? t.primary : t.muted }]}>
-          Kitaplık
-        </Text>
-      </Pressable>
+        <Ionicons name={isLibrary ? 'book' : 'book-outline'} size={22} color={isLibrary ? t.primary : t.muted} />
+        <Text style={[styles.label, { color: isLibrary ? t.primary : t.muted }]}>Kitaplık</Text>
+      </ScalePressable>
 
-      {/* FAB — Kitap ekle */}
-      <Pressable
+      <ScalePressable
+        scale={0.93}
         style={[styles.fab, { backgroundColor: t.primary }]}
-        onPress={() => router.push('/add-book' as any)}
+        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push('/add-book' as any); }}
+        accessibilityLabel="Kitap ekle"
+        accessibilityRole="button"
       >
         <Ionicons name="add" size={26} color="#000" />
-      </Pressable>
+      </ScalePressable>
 
-      {/* Paylaş */}
-      <Pressable
+      <ScalePressable
+        scale={0.92}
         style={styles.tab}
-        onPress={() => router.push('/wrapped' as any)}
+        onPress={() => { Haptics.selectionAsync(); router.push('/wrapped' as any); }}
+        accessibilityLabel="Paylaş"
+        accessibilityRole="tab"
+        accessibilityState={{ selected: isWrapped }}
       >
-        <Ionicons
-          name="share-outline"
-          size={22}
-          color={isWrapped ? t.primary : t.muted}
-        />
-        <Text style={[styles.label, { color: isWrapped ? t.primary : t.muted }]}>
-          Paylaş
-        </Text>
-      </Pressable>
+        <Ionicons name={isWrapped ? 'share' : 'share-outline'} size={22} color={isWrapped ? t.primary : t.muted} />
+        <Text style={[styles.label, { color: isWrapped ? t.primary : t.muted }]}>Paylaş</Text>
+      </ScalePressable>
     </View>
   );
 }

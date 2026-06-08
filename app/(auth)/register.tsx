@@ -122,6 +122,16 @@ export default function RegisterScreen() {
             <Text style={{ color: t.primary, fontWeight: '600' }}>Giriş yap</Text>
           </Text>
         </Pressable>
+
+        <Pressable
+          style={styles.guestLink}
+          onPress={async () => {
+            await AsyncStorage.setItem('@ayrac_has_entered', 'true');
+            router.replace('/(app)/(main)/library' as any);
+          }}
+        >
+          <Text style={[styles.guestLinkText, { color: t.mutedStrong }]}>Hesap oluşturmadan devam et</Text>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -152,4 +162,6 @@ const styles = StyleSheet.create({
   dividerText: { fontSize: 12 },
   loginLink: { alignItems: 'center' },
   loginLinkText: { fontSize: 13 },
+  guestLink: { alignItems: 'center', marginTop: 20 },
+  guestLinkText: { fontSize: 12 },
 });
