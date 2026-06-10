@@ -421,7 +421,7 @@ export default function WrappedScreen() {
           <View style={[styles.logoMark, { backgroundColor: t.primary }]}>
             <Ionicons name="bookmark" size={14} color="#000" />
           </View>
-          <Text style={[styles.logoText, { color: t.fg, fontFamily: fonts.serif }]}>wrapped</Text>
+          <Text style={[styles.logoText, { color: t.fg, fontFamily: fonts.serif }]}>özet</Text>
         </View>
         <View style={[styles.viewToggle, { backgroundColor: t.surface, borderColor: t.border }]}>
           {(['monthly', 'yearly'] as ViewMode[]).map((v) => (
@@ -440,20 +440,23 @@ export default function WrappedScreen() {
 
       {/* Period nav */}
       <View style={styles.periodRow}>
-        <Pressable onPress={onPrev} style={styles.periodBtn}>
+        <Pressable onPress={onPrev} style={styles.periodBtn} accessibilityLabel="Önceki dönem" accessibilityRole="button">
           <Ionicons name="chevron-back" size={16} color={t.muted} />
         </Pressable>
         <Text style={[styles.periodLabel, { color: t.fg }]}>{periodLabel}</Text>
-        <Pressable onPress={onNext} style={styles.periodBtn}>
+        <Pressable onPress={onNext} style={styles.periodBtn} accessibilityLabel="Sonraki dönem" accessibilityRole="button">
           <Ionicons name="chevron-forward" size={16} color={t.muted} />
         </Pressable>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <ReadingHeatmap sessions={sessions} isDark={isDark} t={t} />
-
         {finished.length === 0 ? (
-          <EmptyWrapped t={t} />
+          <>
+            <EmptyWrapped t={t} />
+            {sessions.length > 0 && (
+              <ReadingHeatmap sessions={sessions} isDark={isDark} t={t} />
+            )}
+          </>
         ) : (
           <>
             {/* Hero */}
@@ -563,7 +566,7 @@ export default function WrappedScreen() {
                       <View style={[styles.authorDot, { backgroundColor: t.primary }]} />
                       <Text style={[styles.authorName, { color: t.fg }]} numberOfLines={1}>{author}</Text>
                       <Text style={[styles.authorCount, { color: t.muted }]}>
-                        {count} {count === 1 ? 'kitap' : 'kitap'}
+                        {count} kitap
                       </Text>
                     </View>
                   ))}
@@ -587,6 +590,11 @@ export default function WrappedScreen() {
                   ))}
                 </View>
               </View>
+            )}
+
+            {/* Okuma takvimi — sadece veri varsa; boş grid gürültüden ibaret */}
+            {sessions.length > 0 && (
+              <ReadingHeatmap sessions={sessions} isDark={isDark} t={t} />
             )}
 
             {/* Export */}
@@ -643,9 +651,9 @@ const styles = StyleSheet.create({
   viewBtnText: { fontSize: 11, fontWeight: '500' },
   periodRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 22, paddingVertical: 10,
+    paddingHorizontal: 20, paddingVertical: 2,
   },
-  periodBtn: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+  periodBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   periodLabel: { fontSize: 13, fontWeight: '600', letterSpacing: -0.2 },
   scroll: { padding: 20, gap: 12, paddingBottom: 32 },
   hero: { borderRadius: 16, padding: 18, gap: 4 },
@@ -656,7 +664,7 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 8 },
   statBox: { flex: 1, borderRadius: 12, padding: 12, borderWidth: 1, alignItems: 'center', gap: 4 },
   statValue: { fontSize: 24, letterSpacing: -0.5 },
-  statLabel: { fontSize: 8, fontWeight: '700', letterSpacing: 1.2 },
+  statLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2 },
   card: { borderRadius: 16, padding: 14, borderWidth: 1 },
   cardLabel: { fontSize: 9, letterSpacing: 1.5, fontWeight: '700', textTransform: 'uppercase', marginBottom: 12 },
   bookItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
