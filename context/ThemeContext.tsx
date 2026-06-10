@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ayracTokens, ThemeTokens } from '@/constants/tokens';
 
@@ -29,21 +29,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const toggle = () => {
+  const toggle = useCallback(() => {
     setMode((m) => {
       const next = m === 'light' ? 'dark' : 'light';
-      AsyncStorage.setItem(STORAGE_KEY, next);
+      AsyncStorage.setItem(STORAGE_KEY, next).catch(() => {});
       return next;
     });
-  };
+  }, []);
 
-  return (
-    <ThemeContext.Provider
-      value={{ mode, t: ayracTokens[mode], toggle, isDark: mode === 'dark' }}
-    >
-      {children}
-    </ThemeContext.Provider>
+  const value = useMemo(
+    () => ({ mode, t: ayracTokens[mode], toggle, isDark: mode === 'dark' }),
+    [mode, toggle],
   );
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export const useTheme = () => useContext(ThemeContext);

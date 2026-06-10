@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type GoalContextValue = {
@@ -18,38 +18,35 @@ const GoalContext = createContext<GoalContextValue>({
 });
 
 export function GoalProvider({ children }: { children: React.ReactNode }) {
-  const [yearlyGoal, setYearlyGoalState] = useState<number | null>(null);
-  const [monthlyGoal, setMonthlyGoalState] = useState<number | null>(null);
+  const [yearlyGoal, setYearlyGoal] = useState<number | null>(null);
+  const [monthlyGoal, setMonthlyGoal] = useState<number | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(GOAL_KEY).then((raw) => {
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.yearly != null) setYearlyGoalState(parsed.yearly);
-        if (parsed.monthly != null) setMonthlyGoalState(parsed.monthly);
-      }
-    });
+    AsyncStorage.getItem(GOAL_KEY)
+      .then((raw) => {
+        if (!raw) return;
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed.yearly != null) setYearlyGoal(parsed.yearly);
+          if (parsed.monthly != null) setMonthlyGoal(parsed.monthly);
+        } catch {}
+      })
+      .finally(() => setLoaded(true));
   }, []);
 
-  const persist = (yearly: number | null, monthly: number | null) => {
-    AsyncStorage.setItem(GOAL_KEY, JSON.stringify({ yearly, monthly }));
-  };
+  useEffect(() => {
+    if (loaded) {
+      AsyncStorage.setItem(GOAL_KEY, JSON.stringify({ yearly: yearlyGoal, monthly: monthlyGoal })).catch(() => {});
+    }
+  }, [yearlyGoal, monthlyGoal, loaded]);
 
-  const setYearlyGoal = (n: number | null) => {
-    setYearlyGoalState(n);
-    persist(n, monthlyGoal);
-  };
-
-  const setMonthlyGoal = (n: number | null) => {
-    setMonthlyGoalState(n);
-    persist(yearlyGoal, n);
-  };
-
-  return (
-    <GoalContext.Provider value={{ yearlyGoal, monthlyGoal, setYearlyGoal, setMonthlyGoal }}>
-      {children}
-    </GoalContext.Provider>
+  const value = useMemo(
+    () => ({ yearlyGoal, monthlyGoal, setYearlyGoal, setMonthlyGoal }),
+    [yearlyGoal, monthlyGoal],
   );
+
+  return <GoalContext.Provider value={value}>{children}</GoalContext.Provider>;
 }
 
 export const useGoal = () => useContext(GoalContext);
