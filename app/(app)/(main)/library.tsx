@@ -13,6 +13,8 @@ import { useBooks, Book } from '@/context/BooksContext';
 import { useGoal } from '@/context/GoalContext';
 import { fonts, BOOK_COLORS } from '@/constants/tokens';
 import { ScalePressable } from '@/components/ScalePressable';
+import { BookCover } from '@/components/BookCover';
+import { Stars } from '@/components/Stars';
 import { usePro } from '@/context/ProContext';
 import {
   loadReminderSettings, saveReminderSettings, scheduleReminder,
@@ -23,34 +25,6 @@ const MONTHS_TR = [
   'Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
   'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık',
 ];
-
-function BookCover({ color, size = 44, coverImage }: { color: string; size?: number; coverImage?: string }) {
-  if (coverImage) {
-    return (
-      <Image
-        source={{ uri: coverImage }}
-        style={{ width: size * 0.68, height: size, borderRadius: 3 }}
-        resizeMode="cover"
-      />
-    );
-  }
-  return (
-    <View style={{ width: size * 0.68, height: size, borderRadius: 3, backgroundColor: color, overflow: 'hidden' }}>
-      <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, backgroundColor: 'rgba(0,0,0,0.2)' }} />
-    </View>
-  );
-}
-
-function Stars({ value }: { value: number }) {
-  const { t } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', gap: 1 }}>
-      {[1,2,3,4,5].map((i) => (
-        <Ionicons key={i} name="star" size={11} color={i <= value ? '#f5a124' : t.borderStrong} />
-      ))}
-    </View>
-  );
-}
 
 // Bitirilen kitaplar dönem hesaplarında bitirme tarihiyle sayılır
 const finishedDate = (b: Book) => b.finishedAt ?? b.createdAt;
@@ -93,7 +67,7 @@ function BookRow({ book }: { book: Book }) {
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push({ pathname: '/edit-book' as any, params: { id: book.id } }); }}
       style={[styles.bookRow, { backgroundColor: t.surface, borderColor }]}
     >
-      <BookCover color={book.color} size={44} coverImage={book.coverImage} />
+      <BookCover color={book.color} size={44} coverImage={book.coverImage} title={book.title} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={[styles.bookTitle, { color: t.fg }]} numberOfLines={1}>{book.title}</Text>
         <Text style={[styles.bookAuthor, { color: t.muted }]} numberOfLines={1}>{book.author}</Text>
@@ -145,7 +119,7 @@ function ReviewRow({ book }: { book: Book }) {
       onPress={() => book.review!.length > 120 && setExpanded((e) => !e)}
     >
       <View style={styles.reviewRowTop}>
-        <BookCover color={book.color} size={36} coverImage={book.coverImage} />
+        <BookCover color={book.color} size={36} coverImage={book.coverImage} title={book.title} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={[styles.bookTitle, { color: t.fg, fontSize: 13 }]} numberOfLines={1}>{book.title}</Text>
           {book.rating > 0 && <Stars value={book.rating} />}
@@ -820,7 +794,7 @@ export default function LibraryScreen() {
           ) : (
             <>
               <Ionicons name="flag-outline" size={20} color={t.mutedStrong} style={{ marginTop: 6 }} />
-              <Text style={[styles.goalSetText, { color: t.muted }]}>Koy</Text>
+              <Text style={[styles.goalSetText, { color: t.muted }]}>Hedef koy</Text>
             </>
           )}
         </Pressable>

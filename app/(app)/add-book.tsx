@@ -8,30 +8,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/context/ThemeContext';
 import { useBooks } from '@/context/BooksContext';
 import { usePro } from '@/context/ProContext';
 import { fonts, BOOK_COLORS } from '@/constants/tokens';
-
-function BookCover({ title, color, coverImage }: { title: string; color: string; coverImage?: string }) {
-  const letter = title.trim()[0]?.toUpperCase() ?? 'K';
-  if (coverImage) {
-    return (
-      <View style={styles.coverPreview}>
-        <Image source={{ uri: coverImage }} style={styles.coverImage} resizeMode="cover" />
-      </View>
-    );
-  }
-  return (
-    <View style={styles.coverPreview}>
-      <View style={[styles.coverSpine, { backgroundColor: color }]} />
-      <View style={[styles.coverBody, { backgroundColor: color }]}>
-        <Text style={styles.coverLetter}>{letter}</Text>
-      </View>
-    </View>
-  );
-}
+import { BookCover } from '@/components/BookCover';
+import { PhotoPickerSheet } from '@/components/PhotoPickerSheet';
+import { ScalePressable } from '@/components/ScalePressable';
 
 type Status = 'reading' | 'finished' | 'want';
 
@@ -129,31 +113,6 @@ export default function AddBookScreen() {
     setResults([]);
   };
 
-  const pickFromGallery = async () => {
-    setPickerVisible(false);
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [2, 3],
-      quality: 0.8,
-    });
-    if (!result.canceled) setCoverImage(result.assets[0].uri);
-  };
-
-  const takePhoto = async () => {
-    setPickerVisible(false);
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') return;
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [2, 3],
-      quality: 0.8,
-    });
-    if (!result.canceled) setCoverImage(result.assets[0].uri);
-  };
-
   const openScanner = async () => {
     setScanError('');
     if (!cameraPermission?.granted) {
@@ -193,6 +152,7 @@ export default function AddBookScreen() {
   const handleSubmit = () => {
     if (!canSubmit) return;
     if (!isPro && books.length >= 5) { showPaywall('book_limit'); return; }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     addBook({
       title: title.trim(),
       author: author.trim(),
@@ -214,26 +174,13 @@ export default function AddBookScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* Photo picker modal */}
-      <Modal visible={pickerVisible} transparent animationType="fade" onRequestClose={() => setPickerVisible(false)}>
-        <Pressable style={styles.pickerBackdrop} onPress={() => setPickerVisible(false)}>
-          <View style={[styles.pickerSheet, { backgroundColor: t.surface }]}>
-            <Text style={[styles.pickerTitle, { color: t.fg, fontFamily: fonts.serifMedium }]}>Kapak fotoğrafı</Text>
-            <Pressable style={[styles.pickerOption, { borderColor: t.border }]} onPress={takePhoto}>
-              <Ionicons name="camera-outline" size={20} color={t.fg} />
-              <Text style={[styles.pickerOptionText, { color: t.fg }]}>Fotoğraf çek</Text>
-            </Pressable>
-            <Pressable style={[styles.pickerOption, { borderColor: t.border }]} onPress={pickFromGallery}>
-              <Ionicons name="image-outline" size={20} color={t.fg} />
-              <Text style={[styles.pickerOptionText, { color: t.fg }]}>Galeriden seç</Text>
-            </Pressable>
-            {coverImage && (
-              <Pressable style={styles.pickerRemove} onPress={() => { setCoverImage(undefined); setPickerVisible(false); }}>
-                <Text style={[styles.pickerRemoveText, { color: t.orange }]}>Fotoğrafı kaldır</Text>
-              </Pressable>
-            )}
-          </View>
-        </Pressable>
-      </Modal>
+      <PhotoPickerSheet
+        visible={pickerVisible}
+        onClose={() => setPickerVisible(false)}
+        onPicked={setCoverImage}
+        canRemove={!!coverImage}
+        onRemove={() => setCoverImage(undefined)}
+      />
 
       {/* Barcode scanner modal */}
       <Modal visible={scannerOpen} animationType="slide" onRequestClose={() => setScannerOpen(false)}>
@@ -296,7 +243,7 @@ export default function AddBookScreen() {
           {/* Cover preview + color picker */}
           <View style={styles.coverRow}>
             <Pressable onPress={() => setPickerVisible(true)} style={{ position: 'relative' }}>
-              <BookCover title={title} color={color} coverImage={coverImage} />
+              <BookCover title={title} color={color} coverImage={coverImage} size={76} radius={4} />
               <View style={[styles.coverEditBadge, { backgroundColor: t.surface }]}>
                 <Ionicons name="camera" size={11} color={t.fg} />
               </View>
@@ -307,11 +254,14 @@ export default function AddBookScreen() {
                 {BOOK_COLORS.map((c) => (
                   <Pressable
                     key={c}
-                    onPress={() => setColor(c)}
+                    onPress={() => { Haptics.selectionAsync(); setColor(c); }}
+                    hitSlop={10}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: color === c }}
                     style={[
                       styles.colorSwatch,
                       { backgroundColor: c },
-                      color === c && { borderWidth: 2.5, borderColor: t.fg },
+                      color === c && { borderWidth: 2, borderColor: t.fg },
                     ]}
                   />
                 ))}
@@ -432,7 +382,7 @@ export default function AddBookScreen() {
               {([['reading', 'Okunuyor'], ['finished', 'Bitti'], ['want', 'Okuyacağım']] as [Status, string][]).map(([k, lbl]) => (
                 <Pressable
                   key={k}
-                  onPress={() => setStatus(k)}
+                  onPress={() => { Haptics.selectionAsync(); setStatus(k); }}
                   style={[
                     styles.statusBtn,
                     {
@@ -441,7 +391,7 @@ export default function AddBookScreen() {
                     },
                   ]}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: status === k ? t.fg : t.muted }}>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: status === k ? t.primary : t.muted }}>
                     {lbl}
                   </Text>
                 </Pressable>
@@ -455,7 +405,7 @@ export default function AddBookScreen() {
               <Text style={[styles.fieldLabel, { color: t.muted }]}>PUANIN</Text>
               <View style={{ flexDirection: 'row', gap: 4 }}>
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <Pressable key={i} onPress={() => setRating(i === rating ? 0 : i)}>
+                  <Pressable key={i} hitSlop={6} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setRating(i === rating ? 0 : i); }}>
                     <Ionicons
                       name={i <= rating ? 'star' : 'star-outline'}
                       size={28}
@@ -468,15 +418,18 @@ export default function AddBookScreen() {
           )}
 
           {/* Submit */}
-          <Pressable
+          <ScalePressable
+            scale={0.97}
             style={[styles.submit, { backgroundColor: canSubmit ? t.primary : t.border }]}
             onPress={handleSubmit}
             disabled={!canSubmit}
+            accessibilityLabel="Kitabı ekle"
+            accessibilityRole="button"
           >
             <Text style={[styles.submitText, { color: canSubmit ? '#000' : t.muted }]}>
               Kitabı ekle
             </Text>
-          </Pressable>
+          </ScalePressable>
         </ScrollView>
       </View>
     </KeyboardAvoidingView>
@@ -494,46 +447,22 @@ const styles = StyleSheet.create({
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 14 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   sheetTitle: { fontSize: 20, fontWeight: '700', letterSpacing: -0.5 },
-  closeBtn: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  closeBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   coverRow: { flexDirection: 'row', gap: 14, alignItems: 'center' },
-  coverPreview: { flexDirection: 'row', height: 76, borderRadius: 4, overflow: 'hidden' },
-  coverImage: { width: 57, height: 76, borderRadius: 4 },
-  coverSpine: { width: 4, opacity: 0.7 },
-  coverBody: {
-    width: 53, alignItems: 'center', justifyContent: 'center',
-    borderTopRightRadius: 4, borderBottomRightRadius: 4,
-  },
-  coverLetter: { color: 'rgba(255,255,255,0.85)', fontSize: 26, fontWeight: '700' },
   coverEditBadge: {
     position: 'absolute', bottom: 3, right: 3,
     width: 20, height: 20, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 3, elevation: 2,
   },
-  pickerBackdrop: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  pickerSheet: {
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: 20, gap: 10,
-  },
-  pickerTitle: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
-  pickerOption: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    padding: 14, borderRadius: 12, borderWidth: 1,
-  },
-  pickerOptionText: { fontSize: 15, fontWeight: '500' },
-  pickerRemove: { alignItems: 'center', paddingVertical: 10 },
-  pickerRemoveText: { fontSize: 13, fontWeight: '600' },
-  colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 6 },
+  colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
   colorSwatch: { width: 22, height: 22, borderRadius: 11 },
   fieldLabel: {
-    fontSize: 9, fontWeight: '600', letterSpacing: 1.5,
-    textTransform: 'uppercase', marginBottom: 4,
+    fontSize: 10, fontWeight: '600', letterSpacing: 1.5,
+    textTransform: 'uppercase', marginBottom: 5,
   },
   input: {
-    borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13,
+    borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 14,
   },
   searchSpinner: {
     position: 'absolute', right: 12, top: 0, bottom: 0,
@@ -554,8 +483,8 @@ const styles = StyleSheet.create({
   resultTitle: { fontSize: 13, fontWeight: '600' },
   resultMeta: { fontSize: 11, marginTop: 2 },
   statusBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
-  submit: { padding: 13, borderRadius: 12, alignItems: 'center', marginTop: 4 },
-  submitText: { fontSize: 13, fontWeight: '700' },
+  submit: { padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 4 },
+  submitText: { fontSize: 14, fontWeight: '700' },
   scanBtn: {
     width: 44, borderWidth: 1, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',

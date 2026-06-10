@@ -1,39 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView,
-  StyleSheet, KeyboardAvoidingView, Platform,
-  Image, Modal, Alert,
+  StyleSheet, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/context/ThemeContext';
 import { useBooks, Book } from '@/context/BooksContext';
 import { usePro } from '@/context/ProContext';
 import { fonts, BOOK_COLORS } from '@/constants/tokens';
 import { ScalePressable } from '@/components/ScalePressable';
-
-function BookCover({ title, color, coverImage, size = 76 }: { title: string; color: string; coverImage?: string; size?: number }) {
-  if (coverImage) {
-    return (
-      <Image
-        source={{ uri: coverImage }}
-        style={{ width: size * 0.7, height: size, borderRadius: 4 }}
-        resizeMode="cover"
-      />
-    );
-  }
-  const letter = title.trim()[0]?.toUpperCase() ?? 'K';
-  return (
-    <View style={{ width: size * 0.7, height: size, borderRadius: 4, backgroundColor: color, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-      <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: 'rgba(0,0,0,0.18)' }} />
-      <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: size * 0.35, fontWeight: '700' }}>{letter}</Text>
-    </View>
-  );
-}
+import { BookCover } from '@/components/BookCover';
+import { PhotoPickerSheet } from '@/components/PhotoPickerSheet';
 
 function AnimatedStar({ active, onPress, size = 28, activeColor, inactiveColor }: {
   active: boolean; onPress: () => void; size?: number; activeColor: string; inactiveColor: string;
@@ -93,31 +74,6 @@ export default function EditBookScreen() {
 
   if (!book) return null;
 
-  const pickFromGallery = async () => {
-    setPickerVisible(false);
-    const { status: perm } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (perm !== 'granted') return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [2, 3],
-      quality: 0.8,
-    });
-    if (!result.canceled) setCoverImage(result.assets[0].uri);
-  };
-
-  const takePhoto = async () => {
-    setPickerVisible(false);
-    const { status: perm } = await ImagePicker.requestCameraPermissionsAsync();
-    if (perm !== 'granted') return;
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [2, 3],
-      quality: 0.8,
-    });
-    if (!result.canceled) setCoverImage(result.assets[0].uri);
-  };
-
   const handleSave = () => {
     const updated: Book = {
       ...book,
@@ -169,26 +125,13 @@ export default function EditBookScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* Photo picker modal */}
-      <Modal visible={pickerVisible} transparent animationType="fade" onRequestClose={() => setPickerVisible(false)}>
-        <Pressable style={styles.pickerBackdrop} onPress={() => setPickerVisible(false)}>
-          <View style={[styles.pickerSheet, { backgroundColor: t.surface }]}>
-            <Text style={[styles.pickerTitle, { color: t.fg, fontFamily: fonts.serifMedium }]}>Kapak fotoğrafı</Text>
-            <Pressable style={[styles.pickerOption, { borderColor: t.border }]} onPress={takePhoto}>
-              <Ionicons name="camera-outline" size={20} color={t.fg} />
-              <Text style={[styles.pickerOptionText, { color: t.fg }]}>Fotoğraf çek</Text>
-            </Pressable>
-            <Pressable style={[styles.pickerOption, { borderColor: t.border }]} onPress={pickFromGallery}>
-              <Ionicons name="image-outline" size={20} color={t.fg} />
-              <Text style={[styles.pickerOptionText, { color: t.fg }]}>Galeriden seç</Text>
-            </Pressable>
-            {coverImage && (
-              <Pressable style={styles.pickerRemove} onPress={() => { setCoverImage(undefined); setPickerVisible(false); }}>
-                <Text style={[styles.pickerRemoveText, { color: t.orange }]}>Fotoğrafı kaldır</Text>
-              </Pressable>
-            )}
-          </View>
-        </Pressable>
-      </Modal>
+      <PhotoPickerSheet
+        visible={pickerVisible}
+        onClose={() => setPickerVisible(false)}
+        onPicked={setCoverImage}
+        canRemove={!!coverImage}
+        onRemove={() => setCoverImage(undefined)}
+      />
 
       <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
       <View
@@ -216,7 +159,7 @@ export default function EditBookScreen() {
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.coverRow}>
             <Pressable onPress={() => setPickerVisible(true)} style={{ position: 'relative' }}>
-              <BookCover title={title} color={color} coverImage={coverImage} />
+              <BookCover title={title} color={color} coverImage={coverImage} size={76} radius={4} />
               <View style={[styles.coverEditBadge, { backgroundColor: t.surface }]}>
                 <Ionicons name="camera" size={11} color={t.fg} />
               </View>
@@ -439,18 +382,4 @@ const styles = StyleSheet.create({
     gap: 6, borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 8,
   },
   deleteTxt: { fontSize: 13, fontWeight: '600' },
-  pickerBackdrop: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end',
-  },
-  pickerSheet: {
-    borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, gap: 10,
-  },
-  pickerTitle: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
-  pickerOption: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    padding: 14, borderRadius: 12, borderWidth: 1,
-  },
-  pickerOptionText: { fontSize: 15, fontWeight: '500' },
-  pickerRemove: { alignItems: 'center', paddingVertical: 10 },
-  pickerRemoveText: { fontSize: 13, fontWeight: '600' },
 });

@@ -52,12 +52,12 @@ export function BottomNav() {
         scale={0.92}
         style={styles.tab}
         onPress={() => { Haptics.selectionAsync(); router.push('/wrapped' as any); }}
-        accessibilityLabel="Paylaş"
+        accessibilityLabel="Okuma özeti"
         accessibilityRole="tab"
         accessibilityState={{ selected: isWrapped }}
       >
-        <Ionicons name={isWrapped ? 'share' : 'share-outline'} size={22} color={isWrapped ? t.primary : t.muted} />
-        <Text style={[styles.label, { color: isWrapped ? t.primary : t.muted }]}>Paylaş</Text>
+        <Ionicons name={isWrapped ? 'bar-chart' : 'bar-chart-outline'} size={22} color={isWrapped ? t.primary : t.muted} />
+        <Text style={[styles.label, { color: isWrapped ? t.primary : t.muted }]}>Özet</Text>
       </ScalePressable>
     </View>
   );

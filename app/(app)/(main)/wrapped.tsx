@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  View, Text, ScrollView, Pressable, StyleSheet, Image, ActivityIndicator,
+  View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,8 @@ import { useTheme } from '@/context/ThemeContext';
 import { useBooks, Book, ReadingSession } from '@/context/BooksContext';
 import { usePro } from '@/context/ProContext';
 import { fonts } from '@/constants/tokens';
+import { BookCover } from '@/components/BookCover';
+import { Stars } from '@/components/Stars';
 
 const MONTHS_TR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -20,27 +22,6 @@ const MONTHS_TR = [
 const MONTHS_TR_SHORT = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
 type ViewMode = 'monthly' | 'yearly';
-
-function BookCover({ color, coverImage }: { color: string; coverImage?: string }) {
-  if (coverImage) {
-    return <Image source={{ uri: coverImage }} style={styles.coverImg} resizeMode="cover" />;
-  }
-  return (
-    <View style={[styles.coverBlock, { backgroundColor: color }]}>
-      <View style={styles.coverSpine} />
-    </View>
-  );
-}
-
-function Stars({ value }: { value: number }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 2 }}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Ionicons key={i} name={i <= value ? 'star' : 'star-outline'} size={9} color={i <= value ? '#f5a124' : '#555'} />
-      ))}
-    </View>
-  );
-}
 
 function inPeriod(ts: number, view: ViewMode, month: number, year: number): boolean {
   const d = new Date(ts);
@@ -522,7 +503,7 @@ export default function WrappedScreen() {
                     style={styles.bookItem}
                     onPress={() => router.push({ pathname: '/share-book' as any, params: { id: b.id } })}
                   >
-                    <BookCover color={b.color} coverImage={b.coverImage} />
+                    <BookCover color={b.color} coverImage={b.coverImage} title={b.title} size={34} radius={2} />
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text style={[styles.bookTitle, { color: t.fg }]} numberOfLines={1}>{b.title}</Text>
                       <Text style={[styles.bookMeta, { color: t.muted }]} numberOfLines={1}>
@@ -597,7 +578,7 @@ export default function WrappedScreen() {
                 <View style={{ gap: 12 }}>
                   {reading.map((b) => (
                     <View key={b.id} style={[styles.bookItem, { opacity: 0.5 }]}>
-                      <BookCover color={b.color} coverImage={b.coverImage} />
+                      <BookCover color={b.color} coverImage={b.coverImage} title={b.title} size={34} radius={2} />
                       <View style={{ flex: 1, minWidth: 0 }}>
                         <Text style={[styles.bookTitle, { color: t.fg }]} numberOfLines={1}>{b.title}</Text>
                         <Text style={[styles.bookMeta, { color: t.muted }]}>{b.author} · devam ediyor</Text>
@@ -679,9 +660,6 @@ const styles = StyleSheet.create({
   card: { borderRadius: 16, padding: 14, borderWidth: 1 },
   cardLabel: { fontSize: 9, letterSpacing: 1.5, fontWeight: '700', textTransform: 'uppercase', marginBottom: 12 },
   bookItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  coverBlock: { width: 24, height: 34, borderRadius: 2, overflow: 'hidden' },
-  coverSpine: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, backgroundColor: 'rgba(0,0,0,0.2)' },
-  coverImg: { width: 24, height: 34, borderRadius: 2 },
   bookTitle: { fontSize: 13, fontWeight: '600' },
   bookMeta: { fontSize: 11, marginTop: 1 },
   analyticHeadline: { fontSize: 15, letterSpacing: -0.2, lineHeight: 22 },

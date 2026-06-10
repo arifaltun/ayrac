@@ -14,7 +14,9 @@ import { fonts } from '@/constants/tokens';
 
 const { width: W } = Dimensions.get('window');
 const CREAM = '#F5F0E8';
-const ACCENT = '#3A7BD5';
+// Marka vurgusu: uygulamanın geri kalanıyla aynı krem ton (mavi markada yok)
+const ACCENT = 'rgba(245,240,232,0.55)';
+const ACCENT_STRONG = CREAM;
 
 type Book = { color: string; height: number; rotate: string; mb: number };
 type Slide = { label: string; title: string; description: string; books: Book[] };
@@ -243,7 +245,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 8,
     borderRadius: 4,
-    backgroundColor: ACCENT,
+    backgroundColor: ACCENT_STRONG,
   },
   continueBtn: {
     flexDirection: 'row',
