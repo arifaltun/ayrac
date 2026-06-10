@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/context/ThemeContext';
 import { useBooks, Book } from '@/context/BooksContext';
 import { useGoal } from '@/context/GoalContext';
@@ -53,6 +54,14 @@ function Stars({ value }: { value: number }) {
 
 // Bitirilen kitaplar dönem hesaplarında bitirme tarihiyle sayılır
 const finishedDate = (b: Book) => b.finishedAt ?? b.createdAt;
+
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 12) return 'Günaydın';
+  if (h < 18) return 'İyi günler';
+  if (h < 23) return 'İyi akşamlar';
+  return 'İyi geceler';
+}
 
 function StatBox({ label, value, sub, highlight }: {
   label: string; value: string | number; sub?: string; highlight?: boolean;
@@ -385,6 +394,11 @@ export default function LibraryScreen() {
   const [reminder, setReminder] = useState<ReminderSettings>({ enabled: false, hour: 20, minute: 0 });
   const [reminderHourInput, setReminderHourInput] = useState('20');
   const [reminderMinInput, setReminderMinInput] = useState('00');
+  const [userName, setUserName] = useState<string | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem('@ayrac_user_name').then(setUserName);
+  }, []);
 
   const reading = books.filter((b) => b.status === 'reading');
   const want = books.filter((b) => b.status === 'want');
@@ -756,6 +770,11 @@ export default function LibraryScreen() {
         </View>
       </View>
 
+      {/* Greeting */}
+      <Text style={[styles.greeting, { color: t.muted, fontFamily: fonts.serifRegular }]}>
+        {greeting()}{userName ? `, ${userName}` : ''}.
+      </Text>
+
       {/* Free tier banner */}
       {!isPro && books.length >= 3 && (
         <Pressable
@@ -913,6 +932,7 @@ const styles = StyleSheet.create({
     borderRadius: 10, borderWidth: 1,
   },
   freeBannerText: { fontSize: 12 },
+  greeting: { fontSize: 14, paddingHorizontal: 20, marginBottom: 6, letterSpacing: -0.1 },
   periodRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingBottom: 4,
