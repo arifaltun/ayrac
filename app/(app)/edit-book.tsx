@@ -15,6 +15,7 @@ import { fonts, BOOK_COLORS } from '@/constants/tokens';
 import { ScalePressable } from '@/components/ScalePressable';
 import { BookCover } from '@/components/BookCover';
 import { PhotoPickerSheet } from '@/components/PhotoPickerSheet';
+import { ProFeatureGate } from '@/components/ProFeatureGate';
 
 function AnimatedStar({ active, onPress, size = 28, activeColor, inactiveColor }: {
   active: boolean; onPress: () => void; size?: number; activeColor: string; inactiveColor: string;
@@ -241,7 +242,18 @@ export default function EditBookScreen() {
             </View>
           )}
 
-          {status === 'finished' && (
+          {status === 'finished' && !isPro && (
+            <View style={styles.field}>
+              <Text style={[styles.fieldLabel, { color: t.muted }]}>DÜŞÜNCELERİN</Text>
+              <ProFeatureGate
+                trigger="review"
+                title="Düşünce yazmak Pro’da"
+                description="Kitaba dair notunu yaz, paylaşım kartına ekle."
+              />
+            </View>
+          )}
+
+          {status === 'finished' && isPro && (
             <View style={styles.field}>
               <View style={styles.reviewLabelRow}>
                 <Text style={[styles.fieldLabel, { color: t.muted }]}>DÜŞÜNCELERİN</Text>

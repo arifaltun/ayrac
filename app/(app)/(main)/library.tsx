@@ -15,6 +15,7 @@ import { fonts, BOOK_COLORS } from '@/constants/tokens';
 import { ScalePressable } from '@/components/ScalePressable';
 import { BookCover } from '@/components/BookCover';
 import { Stars } from '@/components/Stars';
+import { ProFeatureGate } from '@/components/ProFeatureGate';
 import { usePro } from '@/context/ProContext';
 import {
   loadReminderSettings, saveReminderSettings, scheduleReminder,
@@ -410,9 +411,9 @@ export default function LibraryScreen() {
 
   const periodLabel = view === 'monthly' ? `${MONTHS_TR[monthIndex]} ${year}` : `${year}`;
 
-  // Fetch personalised recommendations once we have enough data
+  // Fetch personalised recommendations once we have enough data (Pro'ya özel)
   useEffect(() => {
-    if (fetchedRef.current || finished.length < 1) return;
+    if (!isPro || fetchedRef.current || finished.length < 1) return;
 
     const genreCounts: Record<string, number> = {};
     finished.forEach((b) => { if (b.genre) genreCounts[b.genre] = (genreCounts[b.genre] ?? 0) + 1; });
@@ -445,7 +446,7 @@ export default function LibraryScreen() {
       })
       .catch(() => {})
       .finally(() => setFetchingRecs(false));
-  }, [finished.length]);
+  }, [finished.length, isPro]);
 
   // Load reminder settings on mount
   useEffect(() => {
@@ -844,11 +845,30 @@ export default function LibraryScreen() {
             {reviewed.length > 0 && (
               <>
                 <SectionHeader label="DÜŞÜNCELERİM" />
-                {reviewed.map((b) => <ReviewRow key={b.id} book={b} />)}
+                {isPro ? (
+                  reviewed.map((b) => <ReviewRow key={b.id} book={b} />)
+                ) : (
+                  <ProFeatureGate
+                    trigger="review"
+                    title="Düşüncelerin Pro’da"
+                    description={`${reviewed.length} kitap düşüncen saklı duruyor — Pro ile erişebilirsin.`}
+                  />
+                )}
               </>
             )}
 
-            {(fetchingRecs || recommendations.length > 0) && (
+            {!isPro && finished.length > 0 && (
+              <>
+                <SectionHeader label="SANA ÖZEL" />
+                <ProFeatureGate
+                  trigger="recommendations"
+                  title="Kitap önerileri Pro’da"
+                  description="Okuduğun türlere göre seçilmiş öneriler."
+                />
+              </>
+            )}
+
+            {isPro && (fetchingRecs || recommendations.length > 0) && (
               <>
                 <SectionHeader label={`SANA ÖZEL${recGenre ? ` · ${recGenre}` : ''}`} />
                 {fetchingRecs ? (

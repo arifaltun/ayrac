@@ -14,6 +14,7 @@ import { usePro } from '@/context/ProContext';
 import { fonts } from '@/constants/tokens';
 import { BookCover } from '@/components/BookCover';
 import { Stars } from '@/components/Stars';
+import { ProFeatureGate } from '@/components/ProFeatureGate';
 
 const MONTHS_TR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -454,7 +455,13 @@ export default function WrappedScreen() {
           <>
             <EmptyWrapped t={t} />
             {sessions.length > 0 && (
-              <ReadingHeatmap sessions={sessions} isDark={isDark} t={t} />
+              <ProFeatureGate
+                trigger="heatmap"
+                title="Okuma takvimi Pro’da"
+                description="Yıllık ısı haritası ve okuma serilerin."
+              >
+                <ReadingHeatmap sessions={sessions} isDark={isDark} t={t} />
+              </ProFeatureGate>
             )}
           </>
         ) : (
@@ -594,7 +601,13 @@ export default function WrappedScreen() {
 
             {/* Okuma takvimi — sadece veri varsa; boş grid gürültüden ibaret */}
             {sessions.length > 0 && (
-              <ReadingHeatmap sessions={sessions} isDark={isDark} t={t} />
+              <ProFeatureGate
+                trigger="heatmap"
+                title="Okuma takvimi Pro’da"
+                description="Yıllık ısı haritası ve okuma serilerin."
+              >
+                <ReadingHeatmap sessions={sessions} isDark={isDark} t={t} />
+              </ProFeatureGate>
             )}
 
             {/* Export */}

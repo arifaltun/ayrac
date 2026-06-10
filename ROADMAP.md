@@ -50,7 +50,7 @@ Her görev tamamlandığında `[ ]` → `[x]` yapılacak.
 ## Free vs Pro Model
 
 ### Free
-- Aylık 5 kitap limiti
+- Toplam 5 kitap limiti
 - Temel istatistikler
 - Okuma modu
 - Son 3 ay okuma geçmişi
@@ -80,6 +80,16 @@ Her görev tamamlandığında `[ ]` → `[x]` yapılacak.
 - İlk kitabı bitirince "BİTİRDİM" kartı paylaşmak istediğinde
 - Wrapped açılmak istendiğinde
 - 3 aydan eski geçmişe bakılmak istendiğinde
+- Kitap önerileri bölümüne dokunulduğunda
+- Okuma takvimi (ısı haritası) önizlemesine dokunulduğunda
+- Kitaba düşünce yazılmak istendiğinde
+
+### Uygulanma durumu
+- [x] Toplam 5 kitap limiti (öneri kartından ekleme dahil)
+- [x] Öneriler, ısı haritası ve düşünce yazma Free'de `ProFeatureGate` ile kilitli
+  (önizleme soluk gösterilir, dokununca paywall açılır)
+- [x] 3 aydan eski geçmiş kilidi (kütüphane + wrapped, aylık ve yıllık görünüm)
+- [ ] Gerçek ödeme entegrasyonu (şu an "Pro'ya Geç" doğrudan Pro yapıyor)
 
 ---
 

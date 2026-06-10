@@ -9,7 +9,14 @@ import { fonts } from '@/constants/tokens';
 import { useTheme } from '@/context/ThemeContext';
 import { ScalePressable } from '@/components/ScalePressable';
 
-export type PaywallTrigger = 'book_limit' | 'bitirdim_card' | 'wrapped' | 'history';
+export type PaywallTrigger =
+  | 'book_limit'
+  | 'bitirdim_card'
+  | 'wrapped'
+  | 'history'
+  | 'recommendations'
+  | 'heatmap'
+  | 'review';
 
 const TRIGGER_COPY: Record<PaywallTrigger, { title: string; subtitle: string }> = {
   book_limit: {
@@ -27,6 +34,18 @@ const TRIGGER_COPY: Record<PaywallTrigger, { title: string; subtitle: string }> 
   history: {
     title: 'Daha eski geçmiş Pro’da',
     subtitle: 'Son üç aydan öncesine bakmak Pro’ya özel.',
+  },
+  recommendations: {
+    title: 'Kitap önerileri Pro’da',
+    subtitle: 'Okuduklarına göre seçilmiş kişisel öneriler Pro’ya özel.',
+  },
+  heatmap: {
+    title: 'Okuma takvimi Pro’da',
+    subtitle: 'Yıllık ısı haritası ve okuma serilerin Pro’ya özel.',
+  },
+  review: {
+    title: 'Kitap düşünceleri Pro’da',
+    subtitle: 'Okuduğun kitaplara düşünce yazmak ve saklamak Pro’ya özel.',
   },
 };
 
