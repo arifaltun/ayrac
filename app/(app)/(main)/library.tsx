@@ -15,7 +15,7 @@ import { ScalePressable } from '@/components/ScalePressable';
 import { usePro } from '@/context/ProContext';
 import {
   loadReminderSettings, saveReminderSettings, scheduleReminder,
-  cancelReminder, requestNotificationPermission, ReminderSettings,
+  cancelReminder, requestNotificationPermission, computeStreak, ReminderSettings,
 } from '@/utils/notifications';
 
 const MONTHS_TR = [
@@ -41,14 +41,18 @@ function BookCover({ color, size = 44, coverImage }: { color: string; size?: num
 }
 
 function Stars({ value }: { value: number }) {
+  const { t } = useTheme();
   return (
     <View style={{ flexDirection: 'row', gap: 1 }}>
       {[1,2,3,4,5].map((i) => (
-        <Ionicons key={i} name="star" size={11} color={i <= value ? '#f5a124' : '#333'} />
+        <Ionicons key={i} name="star" size={11} color={i <= value ? '#f5a124' : t.borderStrong} />
       ))}
     </View>
   );
 }
+
+// Bitirilen kitaplar dönem hesaplarında bitirme tarihiyle sayılır
+const finishedDate = (b: Book) => b.finishedAt ?? b.createdAt;
 
 function StatBox({ label, value, sub, highlight }: {
   label: string; value: string | number; sub?: string; highlight?: boolean;
@@ -232,7 +236,7 @@ function GoalDetailCard({ view, year, monthIndex, finishedInPeriod, activeGoal }
         return starts.map((startDay, i) => {
           const endDay = starts[i + 1] ? starts[i + 1] - 1 : daysInMonth;
           const count = finishedInPeriod.filter((b) => {
-            const d = new Date(b.createdAt).getDate();
+            const d = new Date(finishedDate(b)).getDate();
             return d >= startDay && d <= endDay;
           }).length;
           const isCurrent = isCurrentPeriod
@@ -242,7 +246,7 @@ function GoalDetailCard({ view, year, monthIndex, finishedInPeriod, activeGoal }
       })()
     : MONTHS_SHORT.map((label, mi) => ({
         label,
-        count: finishedInPeriod.filter((b) => new Date(b.createdAt).getMonth() === mi).length,
+        count: finishedInPeriod.filter((b) => new Date(finishedDate(b)).getMonth() === mi).length,
         isCurrent: isCurrentPeriod && today.getMonth() === mi,
       }));
 
@@ -360,7 +364,7 @@ type ViewMode = 'monthly' | 'yearly';
 
 export default function LibraryScreen() {
   const { t, isDark, toggle } = useTheme();
-  const { books, addBook, resetAll } = useBooks();
+  const { books, sessions, addBook, resetAll } = useBooks();
   const { yearlyGoal, monthlyGoal, setYearlyGoal, setMonthlyGoal } = useGoal();
   const { isPro, showPaywall } = usePro();
   const insets = useSafeAreaInsets();
@@ -388,7 +392,7 @@ export default function LibraryScreen() {
 
   const finishedInPeriod = books.filter((b) => {
     if (b.status !== 'finished') return false;
-    const d = new Date(b.createdAt);
+    const d = new Date(finishedDate(b));
     if (view === 'yearly') return d.getFullYear() === year;
     return d.getFullYear() === year && d.getMonth() === monthIndex;
   });
@@ -479,11 +483,7 @@ export default function LibraryScreen() {
       const granted = await requestNotificationPermission();
       if (!granted) { setReminderVisible(false); return; }
       const currentBook = reading[0]?.title ?? null;
-      const streak = (() => {
-        // simple streak from sessions — reuse logic from wrapped
-        return 0;
-      })();
-      await scheduleReminder(settings, currentBook, streak);
+      await scheduleReminder(settings, currentBook, computeStreak(sessions));
     } else {
       await cancelReminder();
     }
@@ -494,6 +494,7 @@ export default function LibraryScreen() {
   };
 
   const handleAddRecommendation = (rec: Recommendation) => {
+    if (!isPro && books.length >= 5) { showPaywall('book_limit'); return; }
     const color = BOOK_COLORS[Math.floor(Math.random() * BOOK_COLORS.length)];
     const coverImage = rec.coverId
       ? `https://covers.openlibrary.org/b/id/${rec.coverId}-M.jpg`
@@ -515,7 +516,10 @@ export default function LibraryScreen() {
       const newY = monthIndex === 0 ? year - 1 : year;
       if (!isPro && isOlderThan3Months(newM, newY)) { showPaywall('history'); return; }
       monthIndex === 0 ? (setMonthIndex(11), setYear((y) => y - 1)) : setMonthIndex((m) => m - 1);
-    } else setYear((y) => y - 1);
+    } else {
+      if (!isPro && year - 1 < new Date().getFullYear()) { showPaywall('history'); return; }
+      setYear((y) => y - 1);
+    }
   };
   const onNext = () => {
     if (view === 'monthly') {
@@ -550,7 +554,7 @@ export default function LibraryScreen() {
               >
                 <View style={styles.settingsRowLeft}>
                   <Ionicons name="star-outline" size={16} color={t.primary} />
-                  <Text style={[styles.settingsRowLabel, { color: t.primary }]}>Pro'ya Geç · ₺29,99/ay</Text>
+                  <Text style={[styles.settingsRowLabel, { color: t.primary }]}>Pro’ya Geç · ₺29,99/ay</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={14} color={t.primary} />
               </Pressable>
@@ -761,7 +765,7 @@ export default function LibraryScreen() {
           accessibilityLabel="Pro'ya geç"
         >
           <Text style={[styles.freeBannerText, { color: t.muted }]}>
-            <Text style={{ color: t.fg, fontWeight: '600' }}>{books.length}/5</Text> kitap · Sınırsız için Pro'ya geç
+            <Text style={{ color: t.fg, fontWeight: '600' }}>{books.length}/5</Text> kitap · Sınırsız için Pro’ya geç
           </Text>
           <Ionicons name="chevron-forward" size={12} color={t.mutedStrong} />
         </Pressable>

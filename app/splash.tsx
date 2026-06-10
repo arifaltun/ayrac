@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { Pressable, Text, StyleSheet, View } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fonts } from '@/constants/tokens';
 
 const CREAM = '#F5F0E8';
@@ -31,6 +32,14 @@ const easeOut = Easing.out(Easing.cubic);
 export default function SplashScreen() {
   const router = useRouter();
   const quote = useRef(randomQuote()).current;
+  const targetRef = useRef<'/(onboarding)' | '/(app)/(main)/library'>('/(onboarding)');
+  const navigatedRef = useRef(false);
+
+  const continueToApp = () => {
+    if (navigatedRef.current) return;
+    navigatedRef.current = true;
+    router.replace(targetRef.current as any);
+  };
 
   const logoOpacity = useSharedValue(0);
   const logoY = useSharedValue(8);
@@ -52,14 +61,16 @@ export default function SplashScreen() {
     quoteOpacity.value = withDelay(200, withTiming(1, { duration: 700, easing: easeOut }));
     quoteY.value = withDelay(200, withTiming(0, { duration: 700, easing: easeOut }));
 
-    const timer = setTimeout(() => {
-      router.replace('/(onboarding)');
-    }, 3200);
+    AsyncStorage.getItem('@ayrac_has_entered').then((v) => {
+      if (v === 'true') targetRef.current = '/(app)/(main)/library';
+    });
+
+    const timer = setTimeout(continueToApp, 3200);
     return () => clearTimeout(timer);
   }, []);
 
   return (
-    <View style={styles.container}>
+    <Pressable style={styles.container} onPress={continueToApp}>
       <Animated.View style={[styles.logoRow, logoAnim]}>
         <View style={styles.logoMark}>
           <Ionicons name="bookmark" size={14} color="#000" />
@@ -68,10 +79,10 @@ export default function SplashScreen() {
       </Animated.View>
 
       <Animated.View style={[styles.quoteContainer, quoteAnim]}>
-        <Text style={styles.quoteText}>"{quote.text}"</Text>
+        <Text style={styles.quoteText}>“{quote.text}”</Text>
         <Text style={styles.authorText}>— {quote.author}</Text>
       </Animated.View>
-    </View>
+    </Pressable>
   );
 }
 

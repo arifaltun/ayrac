@@ -117,7 +117,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
               accessibilityLabel="Pro'ya geç"
               accessibilityRole="button"
             >
-              <Text style={styles.upgradeBtnText}>Pro'ya Geç · ₺29,99/ay</Text>
+              <Text style={styles.upgradeBtnText}>Pro’ya Geç · ₺29,99/ay</Text>
             </ScalePressable>
 
             <Pressable onPress={dismiss} style={styles.dismissBtn} accessibilityRole="button">

@@ -42,12 +42,10 @@ function Stars({ value }: { value: number }) {
   );
 }
 
-function filterByPeriod(books: Book[], view: ViewMode, month: number, year: number): Book[] {
-  return books.filter((b) => {
-    const d = new Date(b.createdAt);
-    if (view === 'yearly') return d.getFullYear() === year;
-    return d.getFullYear() === year && d.getMonth() === month;
-  });
+function inPeriod(ts: number, view: ViewMode, month: number, year: number): boolean {
+  const d = new Date(ts);
+  if (view === 'yearly') return d.getFullYear() === year;
+  return d.getFullYear() === year && d.getMonth() === month;
 }
 
 function filterSessionsByPeriod(sessions: ReadingSession[], view: ViewMode, month: number, year: number): ReadingSession[] {
@@ -359,9 +357,13 @@ export default function WrappedScreen() {
     } else setYear((y) => y + 1);
   };
 
-  const periodBooks = filterByPeriod(books, view, monthIndex, year);
-  const finished = periodBooks.filter((b) => b.status === 'finished');
-  const reading = periodBooks.filter((b) => b.status === 'reading');
+  // Bitirilenler bitirme tarihiyle, devam edenler eklenme tarihiyle döneme girer
+  const finished = books.filter(
+    (b) => b.status === 'finished' && inPeriod(b.finishedAt ?? b.createdAt, view, monthIndex, year),
+  );
+  const reading = books.filter(
+    (b) => b.status === 'reading' && inPeriod(b.createdAt, view, monthIndex, year),
+  );
   const pages = finished.reduce((s, b) => s + b.pages, 0);
   const rated = finished.filter((b) => b.rating > 0);
   const avg = rated.length
@@ -402,7 +404,7 @@ export default function WrappedScreen() {
         String(b.rating || ''),
         String(b.readingTime ? Math.round(b.readingTime / 60) : ''),
         csvEscape(b.review || ''),
-        new Date(b.createdAt).toLocaleDateString('tr-TR'),
+        new Date(b.finishedAt ?? b.createdAt).toLocaleDateString('tr-TR'),
       ]);
       const csv = [header, ...dataRows].map((r) => r.join(',')).join('\n');
       const slug = periodLabel.toLowerCase().replace(/\s+/g, '-');

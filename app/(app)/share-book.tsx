@@ -196,7 +196,11 @@ export default function ShareBookScreen() {
     sv.value = withSpring(1, { damping: 14, stiffness: 140 });
   }, []);
 
-  if (!book) { router.back(); return null; }
+  useEffect(() => {
+    if (!book) router.back();
+  }, [book, router]);
+
+  if (!book) return null;
 
   const capture = async () => {
     if (!viewShotRef.current?.capture) return null;

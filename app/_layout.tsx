@@ -8,12 +8,17 @@ import {
   Fraunces_600SemiBold,
   Fraunces_700Bold,
 } from '@expo-google-fonts/fraunces';
-import { ThemeProvider } from '@/context/ThemeContext';
+import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { BooksProvider } from '@/context/BooksContext';
 import { GoalProvider } from '@/context/GoalContext';
 import { ProProvider } from '@/context/ProContext';
 
 SplashScreen.preventAutoHideAsync();
+
+function ThemedStatusBar() {
+  const { isDark } = useTheme();
+  return <StatusBar style={isDark ? 'light' : 'dark'} />;
+}
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -40,7 +45,7 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(app)" />
         </Stack>
-        <StatusBar style="light" />
+        <ThemedStatusBar />
       </ProProvider>
       </GoalProvider>
       </BooksProvider>

@@ -65,3 +65,20 @@ export async function scheduleReminder(
 export async function cancelReminder(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
+
+// Bugünden geriye kesintisiz okuma yapılan gün sayısı
+export function computeStreak(sessions: { date: number }[]): number {
+  const days = new Set(
+    sessions.map((s) => {
+      const d = new Date(s.date);
+      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    }),
+  );
+  let count = 0;
+  const d = new Date();
+  while (days.has(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`)) {
+    count++;
+    d.setDate(d.getDate() - 1);
+  }
+  return count;
+}

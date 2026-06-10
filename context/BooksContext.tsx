@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type Book = {
@@ -14,6 +14,7 @@ export type Book = {
   readingTime?: number;
   review?: string;
   createdAt: number;
+  finishedAt?: number;
 };
 
 export type ReadingSession = {
@@ -49,53 +50,77 @@ const BooksContext = createContext<BooksContextValue>({
 export function BooksProvider({ children }: { children: React.ReactNode }) {
   const [books, setBooks] = useState<Book[]>([]);
   const [sessions, setSessions] = useState<ReadingSession[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.multiGet([BOOKS_KEY, SESSIONS_KEY]).then(([booksEntry, sessionsEntry]) => {
-      if (booksEntry[1]) setBooks(JSON.parse(booksEntry[1]));
-      if (sessionsEntry[1]) setSessions(JSON.parse(sessionsEntry[1]));
-    });
+    AsyncStorage.multiGet([BOOKS_KEY, SESSIONS_KEY])
+      .then(([booksEntry, sessionsEntry]) => {
+        try {
+          if (booksEntry[1]) setBooks(JSON.parse(booksEntry[1]));
+        } catch {}
+        try {
+          if (sessionsEntry[1]) setSessions(JSON.parse(sessionsEntry[1]));
+        } catch {}
+      })
+      .finally(() => setLoaded(true));
   }, []);
 
-  const persistBooks = (next: Book[]) => {
-    setBooks(next);
-    AsyncStorage.setItem(BOOKS_KEY, JSON.stringify(next));
-  };
+  useEffect(() => {
+    if (loaded) AsyncStorage.setItem(BOOKS_KEY, JSON.stringify(books)).catch(() => {});
+  }, [books, loaded]);
 
-  const persistSessions = (next: ReadingSession[]) => {
-    setSessions(next);
-    AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(next));
-  };
+  useEffect(() => {
+    if (loaded) AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions)).catch(() => {});
+  }, [sessions, loaded]);
 
-  const addBook = (data: Omit<Book, 'id' | 'createdAt'>) => {
-    const book: Book = { ...data, id: Date.now().toString(), createdAt: Date.now() };
-    persistBooks([book, ...books]);
-  };
+  const addBook = useCallback((data: Omit<Book, 'id' | 'createdAt'>) => {
+    const now = Date.now();
+    const book: Book = {
+      ...data,
+      id: now.toString(),
+      createdAt: now,
+      finishedAt: data.status === 'finished' ? now : undefined,
+    };
+    setBooks((prev) => [book, ...prev]);
+  }, []);
 
-  const updateBook = (updated: Book) => {
-    persistBooks(books.map((b) => (b.id === updated.id ? updated : b)));
-  };
+  const updateBook = useCallback((updated: Book) => {
+    setBooks((prev) =>
+      prev.map((b) => {
+        if (b.id !== updated.id) return b;
+        // finishedAt: bitti'ye geçişte damgala, bitti'den çıkışta temizle
+        const finishedAt =
+          updated.status === 'finished'
+            ? b.status === 'finished'
+              ? (b.finishedAt ?? b.createdAt)
+              : Date.now()
+            : undefined;
+        return { ...updated, finishedAt };
+      }),
+    );
+  }, []);
 
-  const deleteBook = (id: string) => {
-    persistBooks(books.filter((b) => b.id !== id));
-  };
+  const deleteBook = useCallback((id: string) => {
+    setBooks((prev) => prev.filter((b) => b.id !== id));
+  }, []);
 
-  const addSession = (data: Omit<ReadingSession, 'id'>) => {
+  const addSession = useCallback((data: Omit<ReadingSession, 'id'>) => {
     const session: ReadingSession = { ...data, id: Date.now().toString() };
-    persistSessions([...sessions, session]);
-  };
+    setSessions((prev) => [...prev, session]);
+  }, []);
 
-  const resetAll = async () => {
+  const resetAll = useCallback(async () => {
     await AsyncStorage.multiRemove([BOOKS_KEY, SESSIONS_KEY]);
     setBooks([]);
     setSessions([]);
-  };
+  }, []);
 
-  return (
-    <BooksContext.Provider value={{ books, sessions, addBook, updateBook, deleteBook, addSession, resetAll }}>
-      {children}
-    </BooksContext.Provider>
+  const value = useMemo(
+    () => ({ books, sessions, addBook, updateBook, deleteBook, addSession, resetAll }),
+    [books, sessions, addBook, updateBook, deleteBook, addSession, resetAll],
   );
+
+  return <BooksContext.Provider value={value}>{children}</BooksContext.Provider>;
 }
 
 export const useBooks = () => useContext(BooksContext);

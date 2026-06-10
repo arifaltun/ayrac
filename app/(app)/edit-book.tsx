@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView,
   StyleSheet, KeyboardAvoidingView, Platform,
-  Image, Modal,
+  Image, Modal, Alert,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -81,11 +81,17 @@ export default function EditBookScreen() {
   const [coverImage, setCoverImage] = useState<string | undefined>(book?.coverImage);
   const [review, setReview] = useState(book?.review ?? '');
   const [pickerVisible, setPickerVisible] = useState(false);
+  const closingRef = useRef(false);
 
-  if (!book) {
-    router.back();
-    return null;
-  }
+  // Kitap bulunamazsa (silinmiş vs.) ekranı kapat — render sırasında değil
+  useEffect(() => {
+    if (!book && !closingRef.current) {
+      closingRef.current = true;
+      router.back();
+    }
+  }, [book, router]);
+
+  if (!book) return null;
 
   const pickFromGallery = async () => {
     setPickerVisible(false);
@@ -123,15 +129,36 @@ export default function EditBookScreen() {
       rating: status === 'finished' ? rating : 0,
       color,
       coverImage,
-      review: status === 'finished' && review.trim().length >= 50 ? review.trim() : book.review,
+      review:
+        status === 'finished'
+          ? review.trim().length === 0
+            ? undefined
+            : review.trim().length >= 50
+            ? review.trim()
+            : book.review
+          : book.review,
     };
     updateBook(updated);
     router.back();
   };
 
   const handleDelete = () => {
-    deleteBook(book.id);
-    router.back();
+    Alert.alert(
+      'Kitabı sil',
+      `"${book.title}" kitaplığından kalıcı olarak silinecek.`,
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        {
+          text: 'Sil',
+          style: 'destructive',
+          onPress: () => {
+            closingRef.current = true;
+            deleteBook(book.id);
+            router.back();
+          },
+        },
+      ],
+    );
   };
 
   const inputStyle = [styles.input, { backgroundColor: t.bgSoft, borderColor: t.border, color: t.fg }];

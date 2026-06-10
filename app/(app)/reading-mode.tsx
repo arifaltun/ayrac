@@ -46,6 +46,10 @@ export default function ReadingModeScreen() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (!book) router.back();
+  }, [book, router]);
+
   const openSilentSettings = () => {
     setSilentPromptVisible(false);
     if (Platform.OS === 'ios') {
@@ -70,7 +74,7 @@ export default function ReadingModeScreen() {
     router.back();
   };
 
-  if (!book) { router.back(); return null; }
+  if (!book) return null;
 
   const totalAfter = (book.readingTime ?? 0) + elapsed;
 
