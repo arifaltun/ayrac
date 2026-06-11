@@ -44,8 +44,8 @@ const TRIGGER_COPY: Record<PaywallTrigger, { title: string; subtitle: string }> 
     subtitle: 'Yıllık ısı haritası ve okuma serilerin Pro’ya özel.',
   },
   review: {
-    title: 'Kitap düşünceleri Pro’da',
-    subtitle: 'Okuduğun kitaplara düşünce yazmak ve saklamak Pro’ya özel.',
+    title: 'Kitap notları Pro’da',
+    subtitle: 'Okuduğun kitaplara not düşmek ve saklamak Pro’ya özel.',
   },
 };
 

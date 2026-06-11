@@ -14,7 +14,7 @@ import { useGoal } from '@/context/GoalContext';
 import { fonts, BOOK_COLORS } from '@/constants/tokens';
 import { ScalePressable } from '@/components/ScalePressable';
 import { BookCover } from '@/components/BookCover';
-import { Stars } from '@/components/Stars';
+import { RatingText } from '@/components/RatingText';
 import { ProFeatureGate } from '@/components/ProFeatureGate';
 import { usePro } from '@/context/ProContext';
 import {
@@ -88,7 +88,7 @@ function BookRow({ book }: { book: Book }) {
           </View>
         ) : (
           <View style={{ marginTop: 3 }}>
-            <Stars value={book.rating} />
+            <RatingText value={book.rating} size={12} />
           </View>
         )}
       </View>
@@ -123,7 +123,7 @@ function ReviewRow({ book }: { book: Book }) {
         <BookCover color={book.color} size={36} coverImage={book.coverImage} title={book.title} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={[styles.bookTitle, { color: t.fg, fontSize: 13 }]} numberOfLines={1}>{book.title}</Text>
-          {book.rating > 0 && <Stars value={book.rating} />}
+          {book.rating > 0 && <RatingText value={book.rating} size={12} />}
         </View>
         <Pressable
           onPress={() => router.push({ pathname: '/edit-book' as any, params: { id: book.id } })}
@@ -880,14 +880,14 @@ export default function LibraryScreen() {
 
             {reviewed.length > 0 && (
               <>
-                <SectionHeader label="DÜŞÜNCELERİM" />
+                <SectionHeader label="NOTLARIM" />
                 {isPro ? (
                   reviewed.map((b) => <ReviewRow key={b.id} book={b} />)
                 ) : (
                   <ProFeatureGate
                     trigger="review"
-                    title="Düşüncelerin Pro’da"
-                    description={`${reviewed.length} kitap düşüncen saklı duruyor — Pro ile erişebilirsin.`}
+                    title="Notların Pro’da"
+                    description={`${reviewed.length} kitap notun saklı duruyor — Pro ile erişebilirsin.`}
                   />
                 )}
               </>

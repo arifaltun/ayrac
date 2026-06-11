@@ -3,7 +3,6 @@ import {
   View, Text, TextInput, Pressable, ScrollView,
   StyleSheet, KeyboardAvoidingView, Platform, Alert, Keyboard,
 } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -17,30 +16,7 @@ import { BookCover } from '@/components/BookCover';
 import { PhotoPickerSheet } from '@/components/PhotoPickerSheet';
 import { ProFeatureGate } from '@/components/ProFeatureGate';
 import { KeyboardDoneBar, doneBarProps } from '@/components/KeyboardDoneBar';
-
-function AnimatedStar({ active, onPress, size = 28, activeColor, inactiveColor }: {
-  active: boolean; onPress: () => void; size?: number; activeColor: string; inactiveColor: string;
-}) {
-  const sv = useSharedValue(1);
-  const anim = useAnimatedStyle(() => ({ transform: [{ scale: sv.value }] }));
-
-  const handlePress = () => {
-    sv.value = withSequence(
-      withSpring(1.45, { damping: 6, stiffness: 500 }),
-      withSpring(1, { damping: 10, stiffness: 300 }),
-    );
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onPress();
-  };
-
-  return (
-    <Pressable onPress={handlePress} hitSlop={6}>
-      <Animated.View style={anim}>
-        <Ionicons name={active ? 'star' : 'star-outline'} size={size} color={active ? activeColor : inactiveColor} />
-      </Animated.View>
-    </Pressable>
-  );
-}
+import { RatingSlider } from '@/components/RatingSlider';
 
 type Status = 'reading' | 'finished' | 'want';
 
@@ -243,24 +219,14 @@ export default function EditBookScreen() {
           {status === 'finished' && (
             <View style={styles.field}>
               <Text style={[styles.fieldLabel, { color: t.muted }]}>PUANIN</Text>
-              <View style={styles.starsRow}>
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <AnimatedStar
-                    key={i}
-                    active={i <= rating}
-                    onPress={() => setRating(i === rating ? 0 : i)}
-                    activeColor={t.warning}
-                    inactiveColor={t.border}
-                  />
-                ))}
-              </View>
+              <RatingSlider value={rating} onChange={setRating} />
             </View>
           )}
 
           {status === 'finished' && (
             <View style={styles.field}>
               <View style={styles.reviewLabelRow}>
-                <Text style={[styles.fieldLabel, { color: t.muted }]}>KİTAPTAN BİR CÜMLE</Text>
+                <Text style={[styles.fieldLabel, { color: t.muted }]}>ALINTI</Text>
                 <Text style={[styles.charCount, { color: quote.length > 185 ? t.orange : t.muted }]}>
                   {quote.length}/200
                 </Text>
@@ -269,7 +235,7 @@ export default function EditBookScreen() {
                 style={[inputStyle, styles.quoteInput]}
                 value={quote}
                 onChangeText={(v) => setQuote(v.slice(0, 200))}
-                placeholder="Sana dokunan bir cümleyi buraya yaz…"
+                placeholder="Aklında kalan bir satır…"
                 placeholderTextColor={t.mutedStrong}
                 multiline
                 textAlignVertical="top"
@@ -279,10 +245,10 @@ export default function EditBookScreen() {
 
           {status === 'finished' && !isPro && (
             <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: t.muted }]}>DÜŞÜNCELERİN</Text>
+              <Text style={[styles.fieldLabel, { color: t.muted }]}>NOTUN</Text>
               <ProFeatureGate
                 trigger="review"
-                title="Düşünce yazmak Pro’da"
+                title="Not yazmak Pro’da"
                 description="Kitaba dair notunu yaz, paylaşım kartına ekle."
               />
             </View>
@@ -291,7 +257,7 @@ export default function EditBookScreen() {
           {status === 'finished' && isPro && (
             <View style={styles.field}>
               <View style={styles.reviewLabelRow}>
-                <Text style={[styles.fieldLabel, { color: t.muted }]}>DÜŞÜNCELERİN</Text>
+                <Text style={[styles.fieldLabel, { color: t.muted }]}>NOTUN</Text>
                 <Text style={[
                   styles.charCount,
                   {
@@ -309,7 +275,7 @@ export default function EditBookScreen() {
                 style={[inputStyle, styles.reviewInput]}
                 value={review}
                 onChangeText={(v) => setReview(v.slice(0, 280))}
-                placeholder="Bu kitap hakkında düşüncelerini yaz..."
+                placeholder="Bu kitap sende ne bıraktı?"
                 placeholderTextColor={t.mutedStrong}
                 multiline
                 numberOfLines={4}
@@ -322,7 +288,7 @@ export default function EditBookScreen() {
               )}
               {review.length >= 50 && (
                 <Text style={[styles.reviewHint, { color: t.accent }]}>
-                  Düşünceni paylaşım kartına ekleyebilirsin
+                  Notun paylaşım kartında görünecek
                 </Text>
               )}
             </View>

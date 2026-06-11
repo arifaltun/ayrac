@@ -37,6 +37,8 @@ type BooksContextValue = {
 
 const BOOKS_KEY = '@ayrac_books';
 const SESSIONS_KEY = '@ayrac_sessions';
+// Puan ölçeği v2: 0–10 arası, 0.5 adımlı (eski 5 yıldız ×2 ile taşınır)
+const RATING_V2_KEY = '@ayrac_rating_v2';
 
 const BooksContext = createContext<BooksContextValue>({
   books: [],
@@ -54,10 +56,23 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.multiGet([BOOKS_KEY, SESSIONS_KEY])
-      .then(([booksEntry, sessionsEntry]) => {
+    AsyncStorage.multiGet([BOOKS_KEY, SESSIONS_KEY, RATING_V2_KEY])
+      .then(([booksEntry, sessionsEntry, ratingV2Entry]) => {
         try {
-          if (booksEntry[1]) setBooks(JSON.parse(booksEntry[1]));
+          if (booksEntry[1]) {
+            let parsed: Book[] = JSON.parse(booksEntry[1]);
+            // Güvenli migration: eski 0–5 yıldız → 0–10 (4★ → 8.0), tek seferlik
+            if (ratingV2Entry[1] !== 'true') {
+              parsed = parsed.map((b) => ({
+                ...b,
+                rating: Math.min(10, Math.max(0, Math.round((b.rating ?? 0) * 2 * 2) / 2)),
+              }));
+            }
+            setBooks(parsed);
+          }
+          if (ratingV2Entry[1] !== 'true') {
+            AsyncStorage.setItem(RATING_V2_KEY, 'true').catch(() => {});
+          }
         } catch {}
         try {
           if (sessionsEntry[1]) setSessions(JSON.parse(sessionsEntry[1]));

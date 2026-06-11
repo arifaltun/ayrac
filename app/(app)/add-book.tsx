@@ -18,6 +18,7 @@ import { PhotoPickerSheet } from '@/components/PhotoPickerSheet';
 import { CoverCropper } from '@/components/CoverCropper';
 import { ScalePressable } from '@/components/ScalePressable';
 import { KeyboardDoneBar, doneBarProps } from '@/components/KeyboardDoneBar';
+import { RatingSlider } from '@/components/RatingSlider';
 
 type Status = 'reading' | 'finished' | 'want';
 
@@ -99,6 +100,7 @@ export default function AddBookScreen() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [coverImage, setCoverImage] = useState<string | undefined>();
+  const [coverSource, setCoverSource] = useState<'auto' | 'user' | null>(null);
   const [coverSuggestion, setCoverSuggestion] = useState<string | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [scanCropUri, setScanCropUri] = useState<string | null>(null);
@@ -144,8 +146,15 @@ export default function AddBookScreen() {
     setTitle(item.title);
     setAuthor(item.author);
     if (item.pages > 0) setPages(String(item.pages));
-    // Kapak otomatik gelsin — kullanıcının kendi çektiği fotoğrafı ezme
-    if (item.coverUrl) setCoverImage((prev) => prev ?? item.coverUrl ?? undefined);
+    // Kapak otomatik gelsin — kullanıcının kendi çektiği fotoğrafı ezme.
+    // Otomatik kapak formda önizleme olarak görünür; "Değiştir" ile değiştirilebilir.
+    if (item.coverUrl) {
+      setCoverImage((prev) => {
+        if (prev) return prev;
+        setCoverSource('auto');
+        return item.coverUrl ?? undefined;
+      });
+    }
     setResults([]);
     setCoverSuggestion(null);
   };
@@ -231,7 +240,7 @@ export default function AddBookScreen() {
       {/* Tarayıcıdan çekilen kapak fotoğrafı için kırpma adımı */}
       <CoverCropper
         uri={scanCropUri}
-        onDone={(cropped) => { setScanCropUri(null); setCoverImage(cropped); }}
+        onDone={(cropped) => { setScanCropUri(null); setCoverImage(cropped); setCoverSource('user'); }}
         onCancel={() => setScanCropUri(null)}
       />
 
@@ -239,9 +248,9 @@ export default function AddBookScreen() {
       <PhotoPickerSheet
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
-        onPicked={setCoverImage}
+        onPicked={(uri) => { setCoverImage(uri); setCoverSource('user'); }}
         canRemove={!!coverImage}
-        onRemove={() => setCoverImage(undefined)}
+        onRemove={() => { setCoverImage(undefined); setCoverSource(null); }}
       />
 
       {/* Dimmed backdrop */}
@@ -313,10 +322,26 @@ export default function AddBookScreen() {
             </View>
           </View>
 
+          {/* Otomatik gelen kapak doğrulaması: kullanıcı görseli görür, isterse değiştirir */}
+          {coverImage && coverSource === 'auto' && (
+            <Pressable
+              onPress={() => { Haptics.selectionAsync(); setPickerVisible(true); }}
+              style={[styles.coverSuggestRow, { backgroundColor: t.bgSoft, borderColor: t.border }]}
+              accessibilityLabel="Otomatik bulunan kapağı değiştir"
+              accessibilityRole="button"
+            >
+              <Ionicons name="checkmark-circle-outline" size={16} color={t.accent} />
+              <Text style={[styles.coverSuggestText, { color: t.muted }]}>
+                Kapak otomatik bulundu · <Text style={{ color: t.fg, fontWeight: '600' }}>Değiştir</Text>
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color={t.mutedStrong} />
+            </Pressable>
+          )}
+
           {/* Arka plan aramasından gelen kapak önerisi */}
           {coverSuggestion && !coverImage && (
             <Pressable
-              onPress={() => { Haptics.selectionAsync(); setCoverImage(coverSuggestion); setCoverSuggestion(null); }}
+              onPress={() => { Haptics.selectionAsync(); setCoverImage(coverSuggestion); setCoverSource('auto'); setCoverSuggestion(null); }}
               style={[styles.coverSuggestRow, { backgroundColor: t.bgSoft, borderColor: t.border }]}
               accessibilityLabel="Önerilen kapağı kullan"
               accessibilityRole="button"
@@ -464,17 +489,7 @@ export default function AddBookScreen() {
           {status === 'finished' && (
             <View>
               <Text style={[styles.fieldLabel, { color: t.muted }]}>PUANIN</Text>
-              <View style={{ flexDirection: 'row', gap: 4 }}>
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Pressable key={i} hitSlop={6} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setRating(i === rating ? 0 : i); }}>
-                    <Ionicons
-                      name={i <= rating ? 'star' : 'star-outline'}
-                      size={28}
-                      color={i <= rating ? t.warning : t.border}
-                    />
-                  </Pressable>
-                ))}
-              </View>
+              <RatingSlider value={rating} onChange={setRating} />
             </View>
           )}
 

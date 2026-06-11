@@ -64,21 +64,21 @@ function formatDuration(seconds: number): string {
 
 /* ---------- ortak parçalar ---------- */
 
-function Stars({ value, size = 14, dark = false }: { value: number; size?: number; dark?: boolean }) {
+// Puan: "7.5 / 10" serif dizgi — capture edildiği için renkler kart varyantından gelir
+function Rating({ value, color, subColor, size = 16 }: {
+  value: number; color: string; subColor: string; size?: number;
+}) {
   if (value <= 0) return null;
   return (
-    <View style={{ flexDirection: 'row', gap: 3 }}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Ionicons
-          key={i}
-          name={i <= value ? 'star' : 'star-outline'}
-          size={size}
-          color={i <= value ? '#d9952c' : dark ? 'rgba(245,240,232,0.3)' : 'rgba(34,27,18,0.25)'}
-        />
-      ))}
-    </View>
+    <Text style={{ fontFamily: fonts.serif, fontSize: size, color, letterSpacing: -0.3 }}>
+      {value.toFixed(1)}
+      <Text style={{ fontSize: Math.round(size * 0.62), color: subColor, letterSpacing: 0 }}> / 10</Text>
+    </Text>
   );
 }
+
+// Kelime ortasından kırılma yasak: sığmayan başlık kademeli küçülür
+const NO_WORD_BREAK = { adjustsFontSizeToFit: true, minimumFontScale: 0.55 } as const;
 
 // İnce grain dokusu (SVG pattern) — düz dijital zemini kırar
 function Grain({ color, opacity, id }: { color: string; opacity: number; id: string }) {
@@ -125,6 +125,7 @@ function CoverArt({ title, accentColor, coverImage, w, lightShadow }: {
             <View style={{ position: 'absolute', bottom: h * 0.08, left: spineW + 5, right: 6, height: 1, backgroundColor: 'rgba(255,255,255,0.4)' }} />
             <Text
               numberOfLines={2}
+              {...NO_WORD_BREAK}
               style={{
                 transform: [{ rotate: '90deg' }],
                 width: h * 0.78,
@@ -218,15 +219,18 @@ function EditorialCard({ format, title, author, rating, accentColor, coverImage,
               <Text
                 style={{ fontFamily: fonts.serif, color: ink, fontSize: isStory ? 30 : 20, lineHeight: isStory ? 36 : 25, letterSpacing: -0.5 }}
                 numberOfLines={isStory ? 4 : 2}
+                {...NO_WORD_BREAK}
               >
                 {title}
               </Text>
               <Text style={{ fontFamily: fonts.serifRegular, color: sub, fontSize: isStory ? 14 : 12, marginTop: 8 }} numberOfLines={1}>
                 {author}
               </Text>
-              <View style={{ marginTop: 10 }}>
-                <Stars value={rating} size={isStory ? 15 : 12} />
-              </View>
+              {rating > 0 && (
+                <View style={{ marginTop: 10 }}>
+                  <Rating value={rating} color={ink} subColor={sub} size={isStory ? 18 : 14} />
+                </View>
+              )}
             </View>
             <View style={{ transform: [{ rotate: '2.5deg' }] }}>
               <CoverArt title={title} accentColor={accentColor} coverImage={coverImage} w={isStory ? 100 : 70} lightShadow />
@@ -276,6 +280,22 @@ function JournalCard({ format, title, author, rating, accentColor, coverImage, d
   const sub = 'rgba(42,32,20,0.5)';
   const valueStyle = { fontFamily: fonts.serifMedium, color: ink, fontSize: isStory ? 15 : 12 } as const;
 
+  // Boş alan "—" ile doldurulmaz: yalnızca gerçek veriler satıra girer
+  const fields: { label: string; node: React.ReactNode }[] = [
+    { label: 'BİTİRME TARİHİ', node: <Text style={valueStyle}>{dateLabel}</Text> },
+    ...(pages > 0
+      ? [{ label: 'SAYFA', node: <Text style={valueStyle}>{pages.toLocaleString('tr-TR')}</Text> }]
+      : []),
+    ...(genre
+      ? [{ label: 'TÜR', node: <Text style={valueStyle} numberOfLines={1}>{genre}</Text> }]
+      : []),
+    ...(rating > 0
+      ? [{ label: 'PUAN', node: <Rating value={rating} color={ink} subColor={sub} size={isStory ? 17 : 13} /> }]
+      : []),
+  ];
+  const fieldRows: typeof fields[] = [];
+  for (let i = 0; i < fields.length; i += 2) fieldRows.push(fields.slice(i, i + 2));
+
   return (
     <View style={[s.card, { height: isStory ? STORY_H : FEED_H, backgroundColor: '#EFE5CF' }]}>
       <Grain id="g-journal" color={ink} opacity={0.05} />
@@ -292,6 +312,7 @@ function JournalCard({ format, title, author, rating, accentColor, coverImage, d
               <Text
                 style={{ fontFamily: fonts.serif, color: ink, fontSize: isStory ? 24 : 17, lineHeight: isStory ? 30 : 21, letterSpacing: -0.4 }}
                 numberOfLines={isStory ? 3 : 2}
+                {...NO_WORD_BREAK}
               >
                 {title}
               </Text>
@@ -310,24 +331,17 @@ function JournalCard({ format, title, author, rating, accentColor, coverImage, d
             </View>
           </View>
 
-          {/* Kayıt satırları */}
+          {/* Kayıt satırları — yalnızca dolu alanlar */}
           <View style={{ gap: isStory ? 16 : 10, marginTop: isStory ? 26 : 14 }}>
-            <View style={{ flexDirection: 'row', gap: 16 }}>
-              <JournalField label="BİTİRME TARİHİ" sub={sub}>
-                <Text style={valueStyle}>{dateLabel}</Text>
-              </JournalField>
-              <JournalField label="SAYFA" sub={sub}>
-                <Text style={valueStyle}>{pages > 0 ? pages.toLocaleString('tr-TR') : '—'}</Text>
-              </JournalField>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 16 }}>
-              <JournalField label="TÜR" sub={sub}>
-                <Text style={valueStyle} numberOfLines={1}>{genre || '—'}</Text>
-              </JournalField>
-              <JournalField label="PUAN" sub={sub}>
-                {rating > 0 ? <Stars value={rating} size={isStory ? 14 : 11} /> : <Text style={valueStyle}>—</Text>}
-              </JournalField>
-            </View>
+            {fieldRows.map((row, ri) => (
+              <View key={ri} style={{ flexDirection: 'row', gap: 16 }}>
+                {row.map((f) => (
+                  <JournalField key={f.label} label={f.label} sub={sub}>
+                    {f.node}
+                  </JournalField>
+                ))}
+              </View>
+            ))}
           </View>
         </View>
 
@@ -376,7 +390,7 @@ function QuoteCard({ format, title, author, rating, accentColor, coverImage, rev
             {text}”
           </Text>
           <View style={{ width: 32, height: 2, backgroundColor: accentColor, marginTop: isStory ? 22 : 12, opacity: 0.85 }} />
-          <Text style={{ fontFamily: fonts.serifRegular, color: ink, fontSize: isStory ? 14 : 12, marginTop: 10 }} numberOfLines={1}>
+          <Text style={{ fontFamily: fonts.serifRegular, color: ink, fontSize: isStory ? 14 : 12, marginTop: 10 }} numberOfLines={1} {...NO_WORD_BREAK}>
             {title}
           </Text>
           <Text style={{ color: sub, fontSize: isStory ? 12 : 10, marginTop: 3 }} numberOfLines={1}>{author}</Text>
@@ -386,7 +400,7 @@ function QuoteCard({ format, title, author, rating, accentColor, coverImage, rev
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12 }}>
             <CoverArt title={title} accentColor={accentColor} coverImage={coverImage} w={isStory ? 44 : 36} lightShadow />
             <View style={{ gap: 4, paddingBottom: 2 }}>
-              <Stars value={rating} size={11} />
+              {rating > 0 && <Rating value={rating} color={ink} subColor={sub} size={13} />}
               <Signature color={sub} />
             </View>
           </View>
@@ -416,6 +430,16 @@ function StatsCard({ format, title, author, rating, accentColor, coverImage, dat
   const creamSub = 'rgba(245,240,232,0.55)';
   const creamFaint = 'rgba(245,240,232,0.35)';
 
+  // Yalnızca gerçek veriler blok olur; "—" yok
+  const blocks: { v: string; l: string }[] = [
+    ...(stats.days > 0 ? [{ v: `${stats.days} gün`, l: 'BİTİRME SÜRESİ' }] : []),
+    ...(stats.totalSeconds > 0 ? [{ v: formatDuration(stats.totalSeconds), l: 'TOPLAM OKUMA' }] : []),
+    ...(stats.sessionCount > 0 ? [{ v: `${stats.sessionCount}`, l: 'OKUMA OTURUMU' }] : []),
+    ...(stats.avgMinutes > 0 ? [{ v: `${stats.avgMinutes} dk`, l: 'GÜNLÜK ORTALAMA' }] : []),
+  ];
+  const blockRows: typeof blocks[] = [];
+  for (let i = 0; i < blocks.length; i += 2) blockRows.push(blocks.slice(i, i + 2));
+
   return (
     <View style={[s.card, { height: isStory ? STORY_H : FEED_H, backgroundColor: '#14110b' }]}>
       <Grain id="g-stats" color={cream} opacity={0.05} />
@@ -431,31 +455,33 @@ function StatsCard({ format, title, author, rating, accentColor, coverImage, dat
               <Text
                 style={{ fontFamily: fonts.serif, color: cream, fontSize: isStory ? 26 : 18, lineHeight: isStory ? 32 : 23, letterSpacing: -0.5 }}
                 numberOfLines={isStory ? 3 : 2}
+                {...NO_WORD_BREAK}
               >
                 {title}
               </Text>
               <Text style={{ color: creamSub, fontSize: isStory ? 12 : 10, marginTop: 6 }} numberOfLines={1}>{author}</Text>
-              <View style={{ marginTop: 8 }}>
-                <Stars value={rating} size={isStory ? 14 : 11} dark />
-              </View>
+              {rating > 0 && (
+                <View style={{ marginTop: 8 }}>
+                  <Rating value={rating} color={cream} subColor={creamSub} size={isStory ? 16 : 13} />
+                </View>
+              )}
             </View>
             <CoverArt title={title} accentColor={accentColor} coverImage={coverImage} w={isStory ? 76 : 54} />
           </View>
 
-          {/* Okuma verisi */}
+          {/* Okuma verisi — yalnızca dolu bloklar */}
           <View style={{
             marginTop: isStory ? 28 : 14, gap: isStory ? 20 : 10,
             borderTopWidth: 1, borderTopColor: 'rgba(245,240,232,0.15)',
             paddingTop: isStory ? 22 : 12,
           }}>
-            <View style={{ flexDirection: 'row', gap: 16 }}>
-              <StatBlock value={`${stats.days} gün`} label="BİTİRME SÜRESİ" accent={accentColor} cream={creamSub} />
-              <StatBlock value={formatDuration(stats.totalSeconds)} label="TOPLAM OKUMA" accent={accentColor} cream={creamSub} />
-            </View>
-            <View style={{ flexDirection: 'row', gap: 16 }}>
-              <StatBlock value={stats.sessionCount > 0 ? `${stats.sessionCount}` : '—'} label="OKUMA OTURUMU" accent={accentColor} cream={creamSub} />
-              <StatBlock value={stats.avgMinutes > 0 ? `${stats.avgMinutes} dk` : '—'} label="GÜNLÜK ORTALAMA" accent={accentColor} cream={creamSub} />
-            </View>
+            {blockRows.map((row, ri) => (
+              <View key={ri} style={{ flexDirection: 'row', gap: 16 }}>
+                {row.map((b) => (
+                  <StatBlock key={b.l} value={b.v} label={b.l} accent={accentColor} cream={creamSub} />
+                ))}
+              </View>
+            ))}
           </View>
         </View>
 
@@ -490,13 +516,16 @@ function MinimalCard({ format, title, author, rating, accentColor, coverImage, d
             letterSpacing: -0.5, marginTop: 10, maxWidth: '88%',
           }}
           numberOfLines={2}
+          {...NO_WORD_BREAK}
         >
           {title}
         </Text>
         <Text style={{ color: creamSub, fontSize: isStory ? 12 : 10, marginTop: 6 }} numberOfLines={1}>{author}</Text>
-        <View style={{ marginTop: 12 }}>
-          <Stars value={rating} size={isStory ? 15 : 12} dark />
-        </View>
+        {rating > 0 && (
+          <View style={{ marginTop: 12 }}>
+            <Rating value={rating} color={cream} subColor={creamSub} size={isStory ? 18 : 14} />
+          </View>
+        )}
       </View>
       <View style={[s.rowBetween, { position: 'absolute', left: isStory ? 28 : 22, right: isStory ? 28 : 22, bottom: isStory ? 24 : 18 }]}>
         <Signature color={creamFaint} />
@@ -578,8 +607,12 @@ export default function ShareBookScreen() {
     avgMinutes: totalSeconds > 0 ? Math.max(1, Math.round(totalSeconds / 60 / days)) : 0,
   };
 
-  // Alıntı varyantı: alıntı da düşünce de yoksa kilitli görünür
+  // Alıntı varyantı: alıntı da not da yoksa kilitli görünür
   const quoteAvailable = !!(book.quote || book.review);
+  // İstatistik varyantı: en az 2 gerçek veri yoksa kilitli
+  const statsAvailable =
+    [stats.days > 0, stats.totalSeconds > 0, stats.sessionCount > 0, stats.avgMinutes > 0]
+      .filter(Boolean).length >= 2;
 
   const capture = async () => {
     if (!viewShotRef.current?.capture) return null;
@@ -678,7 +711,7 @@ export default function ShareBookScreen() {
       <View style={s.customPanel}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
           {VARIANTS.map(({ key, label }) => {
-            const locked = key === 'quote' && !quoteAvailable;
+            const locked = (key === 'quote' && !quoteAvailable) || (key === 'stats' && !statsAvailable);
             return (
               <Pressable
                 key={key}

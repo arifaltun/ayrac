@@ -13,7 +13,7 @@ import { useBooks, Book, ReadingSession } from '@/context/BooksContext';
 import { usePro } from '@/context/ProContext';
 import { fonts } from '@/constants/tokens';
 import { BookCover } from '@/components/BookCover';
-import { Stars } from '@/components/Stars';
+import { RatingText } from '@/components/RatingText';
 import { ProFeatureGate } from '@/components/ProFeatureGate';
 
 const MONTHS_TR = [
@@ -233,7 +233,7 @@ function buildPdfHtml(
       <td>${b.author}</td>
       <td>${b.genre || '—'}</td>
       <td>${b.pages || '—'}</td>
-      <td>${b.rating > 0 ? '★'.repeat(b.rating) + '☆'.repeat(5 - b.rating) : '—'}</td>
+      <td>${b.rating > 0 ? b.rating.toFixed(1) + ' / 10' : '—'}</td>
       <td>${b.readingTime ? formatTime(b.readingTime) : '—'}</td>
       <td>${b.review ? b.review.slice(0, 80) + (b.review.length > 80 ? '…' : '') : '—'}</td>
     </tr>`).join('');
@@ -520,7 +520,7 @@ export default function WrappedScreen() {
                         {b.author}{b.genre ? ` · ${b.genre}` : ''}
                       </Text>
                       <View style={{ marginTop: 3 }}>
-                        <Stars value={b.rating} />
+                        <RatingText value={b.rating} size={11} />
                       </View>
                     </View>
                     <Ionicons name="share-outline" size={14} color={t.mutedStrong} />
