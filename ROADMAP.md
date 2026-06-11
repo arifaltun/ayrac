@@ -15,8 +15,8 @@ Her görev tamamlandığında `[ ]` → `[x]` yapılacak.
 ## 2. Kitap Ekleme İyileştirmeleri
 
 - [x] **Open Library araması** — kitap adı veya yazar yazınca sonuçlar gelecek, kapak görseli + sayfa sayısı + yazar otomatik dolacak. API: `https://openlibrary.org/search.json`
-- [x] **Barkod tarayıcı** — `expo-barcode-scanner` ile ISBN tarama, bilgiler otomatik gelecek
-- [x] **Kamera ile kapak fotoğrafı** — `expo-image-picker` ile kullanıcı kendi kitabının fotoğrafını çekebilecek veya galeriden seçebilecek. Telif sorunu yok çünkü kullanıcının kendi fotoğrafı.
+- [x] **Barkod tarayıcı** — `expo-camera` ile ISBN tarama, bilgiler otomatik gelecek (autofocus + Modal dışı render düzeltmeleriyle)
+- [x] **Kamera ile kapak fotoğrafı** — `expo-image-picker` ile kullanıcı kendi kitabının fotoğrafını çekebilecek veya galeriden seçebilecek; 2:3 kırpma adımıyla (`CoverCropper`). Telif sorunu yok çünkü kullanıcının kendi fotoğrafı.
 
 ---
 
@@ -47,6 +47,47 @@ Her görev tamamlandığında `[ ]` → `[x]` yapılacak.
 
 ---
 
+## 5. Tamamlananlar · Haziran 2026
+
+- [x] **10'luk puanlama sistemi** — 5 yıldız kaldırıldı; 0–10 arası 0.5 adımlı slider
+  (canlı serif rakam + haptik tik). Eski veriler ×2 ile güvenli migrate edildi
+  (`@ayrac_rating_v2`). Gösterim her yerde "7.5 / 10" serif dizgiyle.
+- [x] **Kapak doğrulama + otomatik kapak** — Open Library `cover_i` → ISBN görseli →
+  Google Books thumbnail zinciri; otomatik bulunan kapak formda önizlenir,
+  "Değiştir" ile fotoğraf/galeri/kapaksız seçilebilir. Manuel eklemede arka plan
+  kapak önerisi.
+- [x] **5 paylaşım kartı varyantı** — Editöryel · Günlük · Alıntı · İstatistik · Minimal.
+  SVG grain dokusu, kelime kırılması koruması (`adjustsFontSizeToFit`), boş alanlar
+  gizlenir; Alıntı ve İstatistik veri yoksa seçicide kilitli görünür.
+  `Book.quote` alanı eklendi ("Alıntı", maks. 200 karakter).
+- [x] **Doğrulanmış alıntı havuzu** — `data/quotes.json`: 35 belgeli alıntı
+  (kaynak adıyla) + 18 imzasız ayraç aforizması. Uydurma atıflar tamamen silindi.
+  Son 20 alıntı AsyncStorage'da tutulur, tekrar engellenir.
+- [x] **Onboarding yeniden tasarımı** — soyut dikdörtgenler yerine gerçek arayüz
+  kesitleri: mini kütüphane mock'u, özet (hero + istatistik) kesiti, Editöryel
+  paylaşım kartı önizlemesi. Statik, sabit örnek veriyle.
+- [x] **Yazar adı temizliği** — `normalizeAuthorName`: "Tolstoy, Leo, graf, 1828-1910"
+  → "Leo Tolstoy". Arama, ISBN, öneriler ve mevcut kayıtlar (tek seferlik migration,
+  `@ayrac_author_norm_v1`).
+- [x] Klavye düzeltmeleri (sayı klavyesine "Tamam" çubuğu, kaydır/dokun-kapat),
+  okuma modu kontrast + belirgin "Çık" butonu, edebi etiketler ("Alıntı", "Notun").
+
+---
+
+## 6. Sıradaki İşler
+
+- [ ] **Kart rötuşları** — 5 varyantın gerçek cihaz Story paylaşımında ince ayarı:
+  uzun başlık/alıntı uç durumları, Android gölge kalitesi (ViewShot), renk paleti
+  ile varyant zeminlerinin uyumu
+- [ ] **Web yayını** — `expo export` ile statik web çıktısı (app.json `web.output:
+  "static"` hazır); tanıtım sayfası + tarayıcıda temel kullanım
+- [ ] **RevenueCat entegrasyonu** — gerçek abonelik (₺29,99/ay); "Pro'ya Geç"
+  şu an doğrudan Pro yapıyor, paywall'a satın alma/geri yükleme bağlanacak
+- [ ] **TestFlight** — EAS Build ile iOS dağıtımı; development build aynı zamanda
+  Expo Go kısıtlarını da kaldırır (bildirimler, media library tam erişim)
+
+---
+
 ## Free vs Pro Model
 
 ### Free
@@ -68,9 +109,9 @@ Her görev tamamlandığında `[ ]` → `[x]` yapılacak.
 - Veri yedekleme — bulutta saklama
 - Kişiye özel kitap önerileri
 - Dışa aktarma — PDF veya CSV
-- Kitap düşüncesi / inceleme yazma (min. 50, max. 280 karakter)
-- Geçmiş kitaplara yazılan düşüncelere erişim
-- "BİTİRDİM" paylaşımında düşünce kartı — kitap adı + yıldız + düşünce metni story formatında
+- Kitap notu yazma (min. 50, max. 280 karakter)
+- Geçmiş kitaplara yazılan notlara erişim
+- "BİTİRDİM" paylaşımında not — kitap adı + puan (10 üzerinden) + not metni kart varyantlarında
 - Streak ısı haritası — yıllık GitHub benzeri görsel
 - Ana ekran widget'ı — home screen'de şu an okunan kitap + streak
 - Okuma hedefi detayı — haftalık ilerleme grafiği, "hedefe yetişmek için haftada X kitap" hesabı
@@ -82,14 +123,14 @@ Her görev tamamlandığında `[ ]` → `[x]` yapılacak.
 - 3 aydan eski geçmişe bakılmak istendiğinde
 - Kitap önerileri bölümüne dokunulduğunda
 - Okuma takvimi (ısı haritası) önizlemesine dokunulduğunda
-- Kitaba düşünce yazılmak istendiğinde
+- Kitaba not yazılmak istendiğinde
 
 ### Uygulanma durumu
 - [x] Toplam 5 kitap limiti (öneri kartından ekleme dahil)
-- [x] Öneriler, ısı haritası ve düşünce yazma Free'de `ProFeatureGate` ile kilitli
+- [x] Öneriler, ısı haritası ve not yazma Free'de `ProFeatureGate` ile kilitli
   (önizleme soluk gösterilir, dokununca paywall açılır)
 - [x] 3 aydan eski geçmiş kilidi (kütüphane + wrapped, aylık ve yıllık görünüm)
-- [ ] Gerçek ödeme entegrasyonu (şu an "Pro'ya Geç" doğrudan Pro yapıyor)
+- [ ] Gerçek ödeme entegrasyonu → bkz. "Sıradaki İşler · RevenueCat"
 
 ---
 
