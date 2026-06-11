@@ -80,6 +80,10 @@ export function CoverCropper({ uri, onDone, onCancel }: {
     transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],
   }));
 
+  // uri yokken Modal'ı hiç mount etme — görünmez modal, altındaki
+  // görünür modal'ın dokunma olaylarını bozabiliyor (iOS)
+  if (!uri) return null;
+
   const confirm = async () => {
     if (!uri || !imgSize || busy) return;
     setBusy(true);
@@ -113,7 +117,7 @@ export function CoverCropper({ uri, onDone, onCancel }: {
   };
 
   return (
-    <Modal visible={!!uri} animationType="fade" onRequestClose={onCancel}>
+    <Modal visible animationType="fade" onRequestClose={onCancel}>
       <GestureHandlerRootView style={styles.container}>
         <Text style={styles.title}>Kapağı çerçeveye hizala</Text>
         <Text style={styles.hint}>Sürükle ve iki parmakla yakınlaştır</Text>

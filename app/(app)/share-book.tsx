@@ -21,13 +21,22 @@ const STORY_H = CARD_W * (16 / 9);
 const FEED_H = CARD_W;
 
 type Format = 'story' | 'feed';
-type CardVariant = 'editorial' | 'card' | 'poster';
+type CardVariant = 'editorial' | 'journal' | 'quote' | 'stats' | 'minimal';
 
 const PALETTE = [
   '#7c3aed', '#1d9e75', '#d85a30', '#3b82f6',
   '#ec4899', '#f5a623', '#06b6d4', '#8b5a3c',
   '#ef4444', '#10b981', '#a855f7', '#6366f1',
 ];
+
+const SIGNATURE = 'ayraç · okuma günlüğü';
+
+type BookStats = {
+  days: number;
+  totalSeconds: number;
+  sessionCount: number;
+  avgMinutes: number;
+};
 
 type CardProps = {
   format: Format;
@@ -37,12 +46,24 @@ type CardProps = {
   accentColor: string;
   coverImage?: string;
   review?: string;
+  quote?: string;
   dateLabel: string;
+  pages: number;
+  genre: string;
+  stats: BookStats;
 };
+
+function formatDuration(seconds: number): string {
+  if (seconds <= 0) return '—';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h} sa ${m} dk`;
+  if (m > 0) return `${m} dk`;
+  return `${seconds} sn`;
+}
 
 /* ---------- ortak parçalar ---------- */
 
-// Kart içi yıldızlar — capture edildiği için tema değil kart zeminine göre sabit
 function Stars({ value, size = 14, dark = false }: { value: number; size?: number; dark?: boolean }) {
   if (value <= 0) return null;
   return (
@@ -59,7 +80,7 @@ function Stars({ value, size = 14, dark = false }: { value: number; size?: numbe
   );
 }
 
-// İnce grain dokusu: dümdüz dijital zemini kıran nokta deseni (SVG pattern, ucuz)
+// İnce grain dokusu (SVG pattern) — düz dijital zemini kırar
 function Grain({ color, opacity, id }: { color: string; opacity: number; id: string }) {
   return (
     <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -76,7 +97,8 @@ function Grain({ color, opacity, id }: { color: string; opacity: number; id: str
   );
 }
 
-// Kitap objesi: 2:3 oran, yumuşak köşe, dağınık gölge, cilt çizgisi
+// Kitap objesi: 2:3, yumuşak köşe, dağınık gölge, cilt çizgisi.
+// Kapak yoksa: kitap sırtı hissi — başlık küçük serif dizgiyle dikey yazılır.
 function CoverArt({ title, accentColor, coverImage, w, lightShadow }: {
   title: string; accentColor: string; coverImage?: string; w: number; lightShadow?: boolean;
 }) {
@@ -98,8 +120,23 @@ function CoverArt({ title, accentColor, coverImage, w, lightShadow }: {
           <Image source={{ uri: coverImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontFamily: fonts.serif, fontSize: h * 0.28, color: 'rgba(255,255,255,0.9)' }}>
-              {title.trim()[0]?.toUpperCase() ?? 'K'}
+            {/* Sırt süslemesi: üst/alt ince çizgiler */}
+            <View style={{ position: 'absolute', top: h * 0.08, left: spineW + 5, right: 6, height: 1, backgroundColor: 'rgba(255,255,255,0.4)' }} />
+            <View style={{ position: 'absolute', bottom: h * 0.08, left: spineW + 5, right: 6, height: 1, backgroundColor: 'rgba(255,255,255,0.4)' }} />
+            <Text
+              numberOfLines={2}
+              style={{
+                transform: [{ rotate: '90deg' }],
+                width: h * 0.78,
+                textAlign: 'center',
+                fontFamily: fonts.serifMedium,
+                fontSize: Math.max(9, Math.round(w * 0.15)),
+                lineHeight: Math.max(11, Math.round(w * 0.19)),
+                color: 'rgba(255,255,255,0.92)',
+                letterSpacing: 0.4,
+              }}
+            >
+              {title}
             </Text>
           </View>
         )}
@@ -123,7 +160,12 @@ function AyracBadge({ fg, bg }: { fg: string; bg: string }) {
   );
 }
 
-// Vintage mühür: çift çerçeve, hafif dönük, tarihli
+function Signature({ color }: { color: string }) {
+  return (
+    <Text style={{ color, fontSize: 9, letterSpacing: 1.5, fontWeight: '600' }}>{SIGNATURE}</Text>
+  );
+}
+
 function Stamp({ color, date }: { color: string; date: string }) {
   return (
     <View style={{
@@ -141,7 +183,6 @@ function Stamp({ color, date }: { color: string; date: string }) {
   );
 }
 
-// Ayraç kurdelesi (poster): üst kenardan sarkan bookmark motifi
 function Ribbon({ color, left = 26 }: { color: string; left?: number }) {
   return (
     <Svg width={34} height={70} viewBox="0 0 34 70" style={{ position: 'absolute', top: 0, left }}>
@@ -150,7 +191,7 @@ function Ribbon({ color, left = 26 }: { color: string; left?: number }) {
   );
 }
 
-/* ---------- Varyant 1 · DERGİ — editöryel sayfa düzeni ---------- */
+/* ---------- 1 · EDİTÖRYEL — dergi sayfası ---------- */
 
 function EditorialCard({ format, title, author, rating, accentColor, coverImage, review, dateLabel }: CardProps) {
   const isStory = format === 'story';
@@ -162,15 +203,13 @@ function EditorialCard({ format, title, author, rating, accentColor, coverImage,
     <View style={[s.card, { height: isStory ? STORY_H : FEED_H, backgroundColor: '#F4EEE2' }]}>
       <Grain id="g-edit" color={ink} opacity={0.045} />
       <View style={{ flex: 1, padding: isStory ? 28 : 22 }}>
-        {/* Masthead */}
-        <View style={s.editMastRow}>
-          <Text style={[s.editMastText, { color: ink }]}>AYRAÇ · OKUMA GÜNLÜĞÜ</Text>
-          <Text style={[s.editMastText, { color: sub }]}>{dateLabel.toUpperCase()}</Text>
+        <View style={s.rowBetween}>
+          <Text style={[s.mastText, { color: ink }]}>{SIGNATURE.toUpperCase()}</Text>
+          <Text style={[s.mastText, { color: sub }]}>{dateLabel.toUpperCase()}</Text>
         </View>
         <View style={{ height: 2, backgroundColor: ink, marginTop: 8 }} />
         <View style={{ height: 1, backgroundColor: ink, marginTop: 2, opacity: 0.5 }} />
 
-        {/* Başlık + eğik kapak: asimetrik kompozisyon */}
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <View style={{ flexDirection: 'row', gap: 18, alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
@@ -208,10 +247,9 @@ function EditorialCard({ format, title, author, rating, accentColor, coverImage,
           ) : null}
         </View>
 
-        {/* Footer */}
         <View>
           <View style={{ height: 1, backgroundColor: ink, opacity: 0.35, marginBottom: 10 }} />
-          <View style={s.editMastRow}>
+          <View style={s.rowBetween}>
             <AyracBadge fg={ink} bg="#F4EEE2" />
             <Text style={{ color: faint, fontSize: 9, letterSpacing: 2, fontWeight: '600' }}>SAYFA · SON</Text>
           </View>
@@ -221,92 +259,79 @@ function EditorialCard({ format, title, author, rating, accentColor, coverImage,
   );
 }
 
-/* ---------- Varyant 2 · KART — vintage kütüphane kartı ---------- */
+/* ---------- 2 · GÜNLÜK — kayıt defteri ---------- */
 
-function LibraryCardField({ label, ink, sub, children }: {
-  label: string; ink: string; sub: string; children: React.ReactNode;
-}) {
+function JournalField({ label, sub, children }: { label: string; sub: string; children: React.ReactNode }) {
   return (
-    <View style={{ borderBottomWidth: 1, borderBottomColor: 'rgba(42,32,20,0.3)', paddingBottom: 6 }}>
+    <View style={{ flex: 1, borderBottomWidth: 1, borderBottomColor: 'rgba(42,32,20,0.3)', paddingBottom: 6 }}>
       <Text style={{ color: sub, fontSize: 8, letterSpacing: 2, fontWeight: '700', marginBottom: 4 }}>{label}</Text>
       {children}
     </View>
   );
 }
 
-function LibraryCard({ format, title, author, rating, accentColor, coverImage, review, dateLabel }: CardProps) {
+function JournalCard({ format, title, author, rating, accentColor, coverImage, dateLabel, pages, genre }: CardProps) {
   const isStory = format === 'story';
   const ink = '#2a2014';
   const sub = 'rgba(42,32,20,0.5)';
+  const valueStyle = { fontFamily: fonts.serifMedium, color: ink, fontSize: isStory ? 15 : 12 } as const;
 
   return (
     <View style={[s.card, { height: isStory ? STORY_H : FEED_H, backgroundColor: '#EFE5CF' }]}>
-      <Grain id="g-card" color={ink} opacity={0.05} />
+      <Grain id="g-journal" color={ink} opacity={0.05} />
       <View style={{ flex: 1, padding: isStory ? 28 : 22 }}>
-        {/* Kart başlığı */}
-        <Text style={{ color: ink, fontSize: 10, letterSpacing: 4, fontWeight: '700', textAlign: 'center' }}>
-          KÜTÜPHANE KARTI
+        <Text style={{ color: ink, fontSize: 9, letterSpacing: 3, fontWeight: '700', textAlign: 'center' }}>
+          {SIGNATURE.toUpperCase()}
         </Text>
         <View style={{ height: 2, backgroundColor: accentColor, marginTop: 8, opacity: 0.75 }} />
         <View style={{ height: 1, backgroundColor: accentColor, marginTop: 2, opacity: 0.45 }} />
 
         <View style={{ flex: 1, justifyContent: 'center' }}>
-          <View style={{ flexDirection: 'row', gap: 16 }}>
-            {/* Alanlar */}
-            <View style={{ flex: 1, gap: isStory ? 14 : 9 }}>
-              <LibraryCardField label="ESER" ink={ink} sub={sub}>
-                <Text
-                  style={{ fontFamily: fonts.serif, color: ink, fontSize: isStory ? 21 : 15, lineHeight: isStory ? 26 : 19, letterSpacing: -0.3 }}
-                  numberOfLines={2}
-                >
-                  {title}
-                </Text>
-              </LibraryCardField>
-              <LibraryCardField label="YAZAR" ink={ink} sub={sub}>
-                <Text style={{ fontFamily: fonts.serifRegular, color: ink, fontSize: isStory ? 14 : 12 }} numberOfLines={1}>
-                  {author}
-                </Text>
-              </LibraryCardField>
-              <LibraryCardField label="DEĞERLENDİRME" ink={ink} sub={sub}>
-                {rating > 0 ? <Stars value={rating} size={isStory ? 14 : 12} /> : (
-                  <Text style={{ color: sub, fontSize: 12 }}>—</Text>
-                )}
-              </LibraryCardField>
-              <LibraryCardField label="BİTİRME TARİHİ" ink={ink} sub={sub}>
-                <Text style={{ color: ink, fontSize: isStory ? 13 : 11, fontWeight: '600', letterSpacing: 0.5 }}>{dateLabel}</Text>
-              </LibraryCardField>
+          <View style={{ flexDirection: 'row', gap: 16, alignItems: 'flex-start' }}>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{ fontFamily: fonts.serif, color: ink, fontSize: isStory ? 24 : 17, lineHeight: isStory ? 30 : 21, letterSpacing: -0.4 }}
+                numberOfLines={isStory ? 3 : 2}
+              >
+                {title}
+              </Text>
+              <Text style={{ fontFamily: fonts.serifRegular, color: sub, fontSize: isStory ? 13 : 11, marginTop: 6 }} numberOfLines={1}>
+                {author}
+              </Text>
             </View>
-
-            {/* Yapıştırılmış fotoğraf hissi: beyaz paspartu + hafif dönüş */}
-            <View style={{ transform: [{ rotate: '-3.5deg' }], alignSelf: 'flex-start' }}>
+            <View style={{ transform: [{ rotate: '-3.5deg' }] }}>
               <View style={{
                 padding: 5, backgroundColor: '#FCF9F2', borderRadius: 4,
                 shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 10,
                 shadowOffset: { width: 0, height: 6 }, elevation: 6,
               }}>
-                <CoverArt title={title} accentColor={accentColor} coverImage={coverImage} w={isStory ? 76 : 54} lightShadow />
+                <CoverArt title={title} accentColor={accentColor} coverImage={coverImage} w={isStory ? 70 : 50} lightShadow />
               </View>
             </View>
           </View>
 
-          {review ? (
-            <View style={{
-              marginTop: isStory ? 22 : 12, paddingLeft: 12,
-              borderLeftWidth: 2, borderLeftColor: accentColor,
-            }}>
-              <Text style={{ color: sub, fontSize: 8, letterSpacing: 2, fontWeight: '700', marginBottom: 5 }}>OKUR NOTU</Text>
-              <Text
-                style={{ fontFamily: fonts.serifRegular, color: ink, fontSize: isStory ? 14 : 11, lineHeight: isStory ? 23 : 16 }}
-                numberOfLines={isStory ? 5 : 2}
-              >
-                “{review}”
-              </Text>
+          {/* Kayıt satırları */}
+          <View style={{ gap: isStory ? 16 : 10, marginTop: isStory ? 26 : 14 }}>
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <JournalField label="BİTİRME TARİHİ" sub={sub}>
+                <Text style={valueStyle}>{dateLabel}</Text>
+              </JournalField>
+              <JournalField label="SAYFA" sub={sub}>
+                <Text style={valueStyle}>{pages > 0 ? pages.toLocaleString('tr-TR') : '—'}</Text>
+              </JournalField>
             </View>
-          ) : null}
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <JournalField label="TÜR" sub={sub}>
+                <Text style={valueStyle} numberOfLines={1}>{genre || '—'}</Text>
+              </JournalField>
+              <JournalField label="PUAN" sub={sub}>
+                {rating > 0 ? <Stars value={rating} size={isStory ? 14 : 11} /> : <Text style={valueStyle}>—</Text>}
+              </JournalField>
+            </View>
+          </View>
         </View>
 
-        {/* Alt: logo + mühür */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <View style={[s.rowBetween, { alignItems: 'flex-end' }]}>
           <AyracBadge fg={ink} bg="#EFE5CF" />
           <Stamp color={accentColor} date={dateLabel} />
         </View>
@@ -315,77 +340,167 @@ function LibraryCard({ format, title, author, rating, accentColor, coverImage, r
   );
 }
 
-/* ---------- Varyant 3 · AFİŞ — cesur tipografik poster ---------- */
+/* ---------- 3 · ALINTI — kitaptan bir cümle merkezde ---------- */
 
-function PosterCard({ format, title, author, rating, accentColor, coverImage, review, dateLabel }: CardProps) {
+function QuoteCard({ format, title, author, rating, accentColor, coverImage, review, quote, dateLabel }: CardProps) {
+  const isStory = format === 'story';
+  const ink = '#221b12';
+  const sub = 'rgba(34,27,18,0.55)';
+  const text = quote || review || '';
+
+  return (
+    <View style={[s.card, { height: isStory ? STORY_H : FEED_H, backgroundColor: '#F6F0E4' }]}>
+      <Grain id="g-quote" color={ink} opacity={0.04} />
+      <View style={{ flex: 1, padding: isStory ? 30 : 24 }}>
+        <View style={s.rowBetween}>
+          <Text style={[s.kicker, { color: accentColor }]}>BİTİRDİM</Text>
+          <AyracBadge fg={ink} bg="#F6F0E4" />
+        </View>
+
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <Text style={{
+            fontFamily: fonts.serif, color: accentColor,
+            fontSize: isStory ? 88 : 56, lineHeight: isStory ? 88 : 56,
+            marginBottom: isStory ? -30 : -20,
+          }}>
+            “
+          </Text>
+          <Text
+            style={{
+              fontFamily: fonts.serif, color: ink,
+              fontSize: isStory ? 24 : 16, lineHeight: isStory ? 36 : 24,
+              letterSpacing: -0.2,
+            }}
+            numberOfLines={isStory ? 8 : 4}
+          >
+            {text}”
+          </Text>
+          <View style={{ width: 32, height: 2, backgroundColor: accentColor, marginTop: isStory ? 22 : 12, opacity: 0.85 }} />
+          <Text style={{ fontFamily: fonts.serifRegular, color: ink, fontSize: isStory ? 14 : 12, marginTop: 10 }} numberOfLines={1}>
+            {title}
+          </Text>
+          <Text style={{ color: sub, fontSize: isStory ? 12 : 10, marginTop: 3 }} numberOfLines={1}>{author}</Text>
+        </View>
+
+        <View style={[s.rowBetween, { alignItems: 'flex-end' }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12 }}>
+            <CoverArt title={title} accentColor={accentColor} coverImage={coverImage} w={isStory ? 44 : 36} lightShadow />
+            <View style={{ gap: 4, paddingBottom: 2 }}>
+              <Stars value={rating} size={11} />
+              <Signature color={sub} />
+            </View>
+          </View>
+          <Text style={{ color: sub, fontSize: 9, letterSpacing: 1 }}>{dateLabel}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/* ---------- 4 · İSTATİSTİK — bu kitabın okuma verisi ---------- */
+
+function StatBlock({ value, label, accent, cream }: { value: string; label: string; accent: string; cream: string }) {
+  return (
+    <View style={{ flex: 1, gap: 3 }}>
+      <Text style={{ fontFamily: fonts.serif, color: accent, fontSize: 24, letterSpacing: -0.5 }} numberOfLines={1}>
+        {value}
+      </Text>
+      <Text style={{ color: cream, fontSize: 8, letterSpacing: 1.8, fontWeight: '700' }}>{label}</Text>
+    </View>
+  );
+}
+
+function StatsCard({ format, title, author, rating, accentColor, coverImage, dateLabel, stats }: CardProps) {
   const isStory = format === 'story';
   const cream = '#F5F0E8';
-  const creamSub = 'rgba(245,240,232,0.6)';
+  const creamSub = 'rgba(245,240,232,0.55)';
+  const creamFaint = 'rgba(245,240,232,0.35)';
+
+  return (
+    <View style={[s.card, { height: isStory ? STORY_H : FEED_H, backgroundColor: '#14110b' }]}>
+      <Grain id="g-stats" color={cream} opacity={0.05} />
+      <View style={{ flex: 1, padding: isStory ? 28 : 22 }}>
+        <View style={s.rowBetween}>
+          <Text style={[s.kicker, { color: accentColor }]}>BİTİRDİM</Text>
+          <AyracBadge fg={cream} bg="#14110b" />
+        </View>
+
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{ fontFamily: fonts.serif, color: cream, fontSize: isStory ? 26 : 18, lineHeight: isStory ? 32 : 23, letterSpacing: -0.5 }}
+                numberOfLines={isStory ? 3 : 2}
+              >
+                {title}
+              </Text>
+              <Text style={{ color: creamSub, fontSize: isStory ? 12 : 10, marginTop: 6 }} numberOfLines={1}>{author}</Text>
+              <View style={{ marginTop: 8 }}>
+                <Stars value={rating} size={isStory ? 14 : 11} dark />
+              </View>
+            </View>
+            <CoverArt title={title} accentColor={accentColor} coverImage={coverImage} w={isStory ? 76 : 54} />
+          </View>
+
+          {/* Okuma verisi */}
+          <View style={{
+            marginTop: isStory ? 28 : 14, gap: isStory ? 20 : 10,
+            borderTopWidth: 1, borderTopColor: 'rgba(245,240,232,0.15)',
+            paddingTop: isStory ? 22 : 12,
+          }}>
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <StatBlock value={`${stats.days} gün`} label="BİTİRME SÜRESİ" accent={accentColor} cream={creamSub} />
+              <StatBlock value={formatDuration(stats.totalSeconds)} label="TOPLAM OKUMA" accent={accentColor} cream={creamSub} />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <StatBlock value={stats.sessionCount > 0 ? `${stats.sessionCount}` : '—'} label="OKUMA OTURUMU" accent={accentColor} cream={creamSub} />
+              <StatBlock value={stats.avgMinutes > 0 ? `${stats.avgMinutes} dk` : '—'} label="GÜNLÜK ORTALAMA" accent={accentColor} cream={creamSub} />
+            </View>
+          </View>
+        </View>
+
+        <View style={s.rowBetween}>
+          <Signature color={creamFaint} />
+          <Text style={{ color: creamFaint, fontSize: 9, letterSpacing: 1 }}>{dateLabel}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/* ---------- 5 · MİNİMAL — koyu, rafine, kapak + tek satır ---------- */
+
+function MinimalCard({ format, title, author, rating, accentColor, coverImage, dateLabel }: CardProps) {
+  const isStory = format === 'story';
+  const cream = '#F5F0E8';
+  const creamSub = 'rgba(245,240,232,0.55)';
   const creamFaint = 'rgba(245,240,232,0.35)';
 
   return (
     <View style={[s.card, { height: isStory ? STORY_H : FEED_H, backgroundColor: '#131009' }]}>
-      {/* Dev drop-cap: başlığın ilk harfi zemin dokusu olarak */}
-      <Text
-        style={{
-          position: 'absolute', top: isStory ? 30 : 4, right: -14,
-          fontFamily: fonts.serif, fontSize: isStory ? 250 : 160,
-          lineHeight: isStory ? 250 : 160, color: accentColor, opacity: 0.16,
-        }}
-      >
-        {title.trim()[0]?.toUpperCase() ?? 'K'}
-      </Text>
-      <Grain id="g-poster" color={cream} opacity={0.05} />
+      <Grain id="g-min" color={cream} opacity={0.045} />
       <Ribbon color={accentColor} left={isStory ? 30 : 24} />
-
-      <View style={{ flex: 1, padding: isStory ? 28 : 22, justifyContent: 'flex-end' }}>
-        {/* Üst sağ: logo */}
-        <View style={{ position: 'absolute', top: isStory ? 26 : 20, right: isStory ? 28 : 22 }}>
-          <AyracBadge fg={cream} bg="#131009" />
-        </View>
-
-        <Text style={[s.kicker, { color: accentColor }]}>BİTİRDİM</Text>
+      <View style={{ flex: 1, padding: isStory ? 28 : 22, alignItems: 'center', justifyContent: 'center' }}>
+        <CoverArt title={title} accentColor={accentColor} coverImage={coverImage} w={isStory ? 128 : 84} />
+        <Text style={[s.kicker, { color: accentColor, marginTop: isStory ? 30 : 16 }]}>BİTİRDİM</Text>
         <Text
           style={{
-            fontFamily: fonts.serif, color: cream,
-            fontSize: isStory ? 38 : 24, lineHeight: isStory ? 44 : 29,
-            letterSpacing: -0.8, marginTop: 10,
+            fontFamily: fonts.serif, color: cream, textAlign: 'center',
+            fontSize: isStory ? 26 : 18, lineHeight: isStory ? 33 : 23,
+            letterSpacing: -0.5, marginTop: 10, maxWidth: '88%',
           }}
-          numberOfLines={isStory ? 3 : 2}
+          numberOfLines={2}
         >
           {title}
         </Text>
-        <Text style={{ color: creamSub, fontSize: isStory ? 12 : 10, letterSpacing: 2.5, fontWeight: '600', marginTop: 10 }} numberOfLines={1}>
-          {author.toUpperCase()}
-        </Text>
+        <Text style={{ color: creamSub, fontSize: isStory ? 12 : 10, marginTop: 6 }} numberOfLines={1}>{author}</Text>
         <View style={{ marginTop: 12 }}>
-          <Stars value={rating} size={isStory ? 16 : 13} dark />
+          <Stars value={rating} size={isStory ? 15 : 12} dark />
         </View>
-
-        {review ? (
-          <Text
-            style={{
-              fontFamily: fonts.serifRegular, color: 'rgba(245,240,232,0.85)',
-              fontSize: isStory ? 15 : 12, lineHeight: isStory ? 25 : 18,
-              marginTop: isStory ? 18 : 10, letterSpacing: 0.1,
-            }}
-            numberOfLines={isStory ? 4 : 2}
-          >
-            “{review}”
-          </Text>
-        ) : null}
-
-        {/* Alt sıra: kitap objesi + künye */}
-        <View style={{
-          flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
-          marginTop: isStory ? 26 : 14,
-        }}>
-          <CoverArt title={title} accentColor={accentColor} coverImage={coverImage} w={isStory ? 72 : 50} />
-          <View style={{ alignItems: 'flex-end', gap: 3 }}>
-            <Text style={{ color: creamFaint, fontSize: 9, letterSpacing: 1.5 }}>ayraç · okuma takip</Text>
-            <Text style={{ color: creamFaint, fontSize: 9, letterSpacing: 1.5 }}>{dateLabel}</Text>
-          </View>
-        </View>
+      </View>
+      <View style={[s.rowBetween, { position: 'absolute', left: isStory ? 28 : 22, right: isStory ? 28 : 22, bottom: isStory ? 24 : 18 }]}>
+        <Signature color={creamFaint} />
+        <Text style={{ color: creamFaint, fontSize: 9, letterSpacing: 1 }}>{dateLabel}</Text>
       </View>
     </View>
   );
@@ -393,18 +508,30 @@ function PosterCard({ format, title, author, rating, accentColor, coverImage, re
 
 function ShareCard(props: CardProps & { variant: CardVariant }) {
   const { variant, ...rest } = props;
-  if (variant === 'card') return <LibraryCard {...rest} />;
-  if (variant === 'poster') return <PosterCard {...rest} />;
-  return <EditorialCard {...rest} />;
+  switch (variant) {
+    case 'journal': return <JournalCard {...rest} />;
+    case 'quote': return <QuoteCard {...rest} />;
+    case 'stats': return <StatsCard {...rest} />;
+    case 'minimal': return <MinimalCard {...rest} />;
+    default: return <EditorialCard {...rest} />;
+  }
 }
 
 /* ---------- ekran ---------- */
+
+const VARIANTS: { key: CardVariant; label: string }[] = [
+  { key: 'editorial', label: 'Editöryel' },
+  { key: 'journal', label: 'Günlük' },
+  { key: 'quote', label: 'Alıntı' },
+  { key: 'stats', label: 'İstatistik' },
+  { key: 'minimal', label: 'Minimal' },
+];
 
 export default function ShareBookScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { books } = useBooks();
+  const { books, sessions } = useBooks();
 
   const book = books.find((b) => b.id === id);
   const [format, setFormat] = useState<Format>('story');
@@ -439,6 +566,20 @@ export default function ShareBookScreen() {
   const dateLabel = new Date(book.finishedAt ?? book.createdAt).toLocaleDateString('tr-TR', {
     day: 'numeric', month: 'long', year: 'numeric',
   });
+
+  // Bu kitabın okuma verisi (İstatistik varyantı için)
+  const bookSessions = sessions.filter((sess) => sess.bookId === book.id);
+  const totalSeconds = book.readingTime ?? bookSessions.reduce((sum, sess) => sum + sess.duration, 0);
+  const days = Math.max(1, Math.ceil(((book.finishedAt ?? book.createdAt) - book.createdAt) / 86400000));
+  const stats: BookStats = {
+    days,
+    totalSeconds,
+    sessionCount: bookSessions.length,
+    avgMinutes: totalSeconds > 0 ? Math.max(1, Math.round(totalSeconds / 60 / days)) : 0,
+  };
+
+  // Alıntı varyantı: alıntı da düşünce de yoksa kilitli görünür
+  const quoteAvailable = !!(book.quote || book.review);
 
   const capture = async () => {
     if (!viewShotRef.current?.capture) return null;
@@ -523,7 +664,11 @@ export default function ShareBookScreen() {
               accentColor={accentColor}
               coverImage={book.coverImage}
               review={book.review}
+              quote={book.quote}
               dateLabel={dateLabel}
+              pages={book.pages}
+              genre={book.genre}
+              stats={stats}
             />
           </ViewShot>
         </Animated.View>
@@ -531,17 +676,24 @@ export default function ShareBookScreen() {
 
       {/* Customization */}
       <View style={s.customPanel}>
-        <View style={s.styleRow}>
-          {([['editorial', 'Dergi'], ['card', 'Kart'], ['poster', 'Afiş']] as [CardVariant, string][]).map(([v, lbl]) => (
-            <Pressable
-              key={v}
-              onPress={() => animateChange(() => setVariant(v))}
-              style={[s.styleBtn, variant === v && s.styleBtnActive]}
-            >
-              <Text style={[s.styleBtnText, variant === v && s.styleBtnTextActive]}>{lbl}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+          {VARIANTS.map(({ key, label }) => {
+            const locked = key === 'quote' && !quoteAvailable;
+            return (
+              <Pressable
+                key={key}
+                onPress={() => {
+                  if (locked) { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning); return; }
+                  animateChange(() => setVariant(key));
+                }}
+                style={[s.styleBtn, variant === key && s.styleBtnActive, locked && { opacity: 0.35 }]}
+              >
+                {locked && <Ionicons name="lock-closed" size={10} color="rgba(255,255,255,0.5)" />}
+                <Text style={[s.styleBtnText, variant === key && s.styleBtnTextActive]}>{label}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.paletteScroll}>
           {PALETTE.map((c) => (
@@ -607,9 +759,9 @@ const s = StyleSheet.create({
   formatBtnTextActive: { color: '#F5F0E8' },
   previewContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   customPanel: { gap: 10, marginTop: 14 },
-  styleRow: { flexDirection: 'row', gap: 8 },
   styleBtn: {
-    flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, marginRight: 8,
     backgroundColor: '#111', borderWidth: 1, borderColor: '#1a1a1a',
   },
   styleBtnActive: { borderColor: '#F5F0E8' },
@@ -621,11 +773,11 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   paletteSwatchActive: { borderWidth: 2, borderColor: '#fff' },
-  // Card shell
+  // Card shell + ortak tipografi
   card: { width: CARD_W, borderRadius: 16, overflow: 'hidden' },
   kicker: { fontSize: 11, fontWeight: '800', letterSpacing: 3.5 },
-  editMastRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  editMastText: { fontSize: 8, letterSpacing: 1.8, fontWeight: '700' },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  mastText: { fontSize: 8, letterSpacing: 1.8, fontWeight: '700' },
   // Actions
   actions: { gap: 8, marginTop: 8 },
   savedBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 4 },

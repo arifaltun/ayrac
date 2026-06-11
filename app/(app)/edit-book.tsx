@@ -16,6 +16,7 @@ import { ScalePressable } from '@/components/ScalePressable';
 import { BookCover } from '@/components/BookCover';
 import { PhotoPickerSheet } from '@/components/PhotoPickerSheet';
 import { ProFeatureGate } from '@/components/ProFeatureGate';
+import { KeyboardDoneBar, doneBarProps } from '@/components/KeyboardDoneBar';
 
 function AnimatedStar({ active, onPress, size = 28, activeColor, inactiveColor }: {
   active: boolean; onPress: () => void; size?: number; activeColor: string; inactiveColor: string;
@@ -62,6 +63,7 @@ export default function EditBookScreen() {
   const [color, setColor] = useState(book?.color ?? BOOK_COLORS[0]);
   const [coverImage, setCoverImage] = useState<string | undefined>(book?.coverImage);
   const [review, setReview] = useState(book?.review ?? '');
+  const [quote, setQuote] = useState(book?.quote ?? '');
   const [pickerVisible, setPickerVisible] = useState(false);
   const closingRef = useRef(false);
 
@@ -94,6 +96,7 @@ export default function EditBookScreen() {
             ? review.trim()
             : book.review
           : book.review,
+      quote: quote.trim() ? quote.trim().slice(0, 200) : undefined,
     };
     updateBook(updated);
     router.back();
@@ -122,6 +125,7 @@ export default function EditBookScreen() {
 
   return (
     <View style={{ flex: 1 }}>
+      <KeyboardDoneBar />
       {/* Photo picker modal */}
       <PhotoPickerSheet
         visible={pickerVisible}
@@ -207,7 +211,7 @@ export default function EditBookScreen() {
           <View style={styles.fieldRow}>
             <View style={[styles.field, { flex: 1 }]}>
               <Text style={[styles.fieldLabel, { color: t.muted }]}>SAYFA</Text>
-              <TextInput style={inputStyle} value={pages} onChangeText={setPages} keyboardType="number-pad" placeholderTextColor={t.mutedStrong} />
+              <TextInput style={inputStyle} value={pages} onChangeText={setPages} keyboardType="number-pad" placeholderTextColor={t.mutedStrong} {...doneBarProps} />
             </View>
             <View style={[styles.field, { flex: 1 }]}>
               <Text style={[styles.fieldLabel, { color: t.muted }]}>TÜR</Text>
@@ -247,6 +251,26 @@ export default function EditBookScreen() {
                   />
                 ))}
               </View>
+            </View>
+          )}
+
+          {status === 'finished' && (
+            <View style={styles.field}>
+              <View style={styles.reviewLabelRow}>
+                <Text style={[styles.fieldLabel, { color: t.muted }]}>KİTAPTAN BİR CÜMLE</Text>
+                <Text style={[styles.charCount, { color: quote.length > 185 ? t.orange : t.muted }]}>
+                  {quote.length}/200
+                </Text>
+              </View>
+              <TextInput
+                style={[inputStyle, styles.quoteInput]}
+                value={quote}
+                onChangeText={(v) => setQuote(v.slice(0, 200))}
+                placeholder="Sana dokunan bir cümleyi buraya yaz…"
+                placeholderTextColor={t.mutedStrong}
+                multiline
+                textAlignVertical="top"
+              />
             </View>
           )}
 
@@ -386,6 +410,7 @@ const styles = StyleSheet.create({
   reviewLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   charCount: { fontSize: 10, fontWeight: '600', letterSpacing: 0.5 },
   reviewInput: { minHeight: 90, paddingTop: 10, fontSize: 13, lineHeight: 20 },
+  quoteInput: { minHeight: 60, paddingTop: 10, fontSize: 13, lineHeight: 20 },
   reviewHint: { fontSize: 11, marginTop: 4, fontWeight: '500' },
   readingModeBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

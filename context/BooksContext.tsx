@@ -13,6 +13,7 @@ export type Book = {
   coverImage?: string;
   readingTime?: number;
   review?: string;
+  quote?: string;
   createdAt: number;
   finishedAt?: number;
 };

@@ -34,9 +34,11 @@ export function PhotoPickerSheet({ visible, onClose, onPicked, canRemove, onRemo
   const [rawUri, setRawUri] = useState<string | null>(null);
 
   const pickFromGallery = async () => {
+    console.log('[PhotoPicker] Galeriden seç basıldı');
     onClose();
     await waitForModalDismiss();
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    console.log('[PhotoPicker] galeri izni:', status);
     if (status !== 'granted') {
       permissionDeniedAlert('Galeriden kapak seçmek');
       return;
@@ -45,18 +47,22 @@ export function PhotoPickerSheet({ visible, onClose, onPicked, canRemove, onRemo
       mediaTypes: ['images'],
       quality: 0.9,
     });
+    console.log('[PhotoPicker] galeri sonucu:', result.canceled ? 'iptal' : result.assets?.[0]?.uri);
     if (!result.canceled) setRawUri(result.assets[0].uri);
   };
 
   const takePhoto = async () => {
+    console.log('[PhotoPicker] Fotoğraf çek basıldı');
     onClose();
     await waitForModalDismiss();
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    console.log('[PhotoPicker] kamera izni:', status);
     if (status !== 'granted') {
       permissionDeniedAlert('Kapak fotoğrafı çekmek');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.9 });
+    console.log('[PhotoPicker] kamera sonucu:', result.canceled ? 'iptal' : result.assets?.[0]?.uri);
     if (!result.canceled) setRawUri(result.assets[0].uri);
   };
 

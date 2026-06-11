@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView,
   StyleSheet, KeyboardAvoidingView, Platform,
-  Image, ActivityIndicator, Modal,
+  Image, ActivityIndicator, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -17,6 +17,7 @@ import { BookCover } from '@/components/BookCover';
 import { PhotoPickerSheet } from '@/components/PhotoPickerSheet';
 import { CoverCropper } from '@/components/CoverCropper';
 import { ScalePressable } from '@/components/ScalePressable';
+import { KeyboardDoneBar, doneBarProps } from '@/components/KeyboardDoneBar';
 
 type Status = 'reading' | 'finished' | 'want';
 
@@ -25,7 +26,12 @@ type OLResult = {
   author: string;
   pages: number;
   coverId: number | null;
+  coverUrl: string | null;
 };
+
+function coverUrlFromId(coverId: number, size: 'S' | 'L' = 'L') {
+  return `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg`;
+}
 
 async function searchOpenLibrary(query: string): Promise<OLResult[]> {
   const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=title,author_name,number_of_pages_median,cover_i&limit=5`;
@@ -36,7 +42,25 @@ async function searchOpenLibrary(query: string): Promise<OLResult[]> {
     author: doc.author_name?.[0] ?? '',
     pages: doc.number_of_pages_median ?? 0,
     coverId: doc.cover_i ?? null,
+    coverUrl: doc.cover_i ? coverUrlFromId(doc.cover_i) : null,
   }));
+}
+
+// Kapak sırası: Open Library cover_i → Open Library ISBN görseli → Google Books
+async function resolveCoverByISBN(isbn: string, coverId: number | null): Promise<string | null> {
+  if (coverId) return coverUrlFromId(coverId);
+  const isbnUrl = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg?default=false`;
+  try {
+    const head = await fetch(isbnUrl, { method: 'HEAD' });
+    if (head.ok) return isbnUrl;
+  } catch {}
+  try {
+    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+    const json = await res.json();
+    const thumb = json.items?.[0]?.volumeInfo?.imageLinks?.thumbnail;
+    if (thumb) return String(thumb).replace('http://', 'https://');
+  } catch {}
+  return null;
 }
 
 async function lookupByISBN(isbn: string): Promise<OLResult | null> {
@@ -45,16 +69,14 @@ async function lookupByISBN(isbn: string): Promise<OLResult | null> {
   const json = await res.json();
   const doc = json.docs?.[0];
   if (!doc) return null;
+  const coverId = doc.cover_i ?? null;
   return {
     title: doc.title ?? '',
     author: doc.author_name?.[0] ?? '',
     pages: doc.number_of_pages_median ?? 0,
-    coverId: doc.cover_i ?? null,
+    coverId,
+    coverUrl: await resolveCoverByISBN(isbn, coverId),
   };
-}
-
-function coverUrl(coverId: number) {
-  return `https://covers.openlibrary.org/b/id/${coverId}-S.jpg`;
 }
 
 export default function AddBookScreen() {
@@ -77,15 +99,22 @@ export default function AddBookScreen() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [coverImage, setCoverImage] = useState<string | undefined>();
+  const [coverSuggestion, setCoverSuggestion] = useState<string | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [scanCropUri, setScanCropUri] = useState<string | null>(null);
 
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanLoading, setScanLoading] = useState(false);
   const [scanError, setScanError] = useState('');
+  const [scanEvents, setScanEvents] = useState<string[]>([]);
   const scannedRef = useRef(false);
   const cameraRef = useRef<CameraView>(null);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+
+  const logScan = (msg: string) => {
+    console.log('[Scanner]', msg);
+    setScanEvents((prev) => [...prev.slice(-2), msg]);
+  };
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -98,6 +127,8 @@ export default function AddBookScreen() {
       try {
         const res = await searchOpenLibrary(title.trim());
         setResults(res);
+        // Manuel eklemede arka plan kapak önerisi
+        setCoverSuggestion(res.find((r) => r.coverUrl)?.coverUrl ?? null);
       } catch {
         setResults([]);
       } finally {
@@ -113,11 +144,15 @@ export default function AddBookScreen() {
     setTitle(item.title);
     setAuthor(item.author);
     if (item.pages > 0) setPages(String(item.pages));
+    // Kapak otomatik gelsin — kullanıcının kendi çektiği fotoğrafı ezme
+    if (item.coverUrl) setCoverImage((prev) => prev ?? item.coverUrl ?? undefined);
     setResults([]);
+    setCoverSuggestion(null);
   };
 
   const openScanner = async () => {
     setScanError('');
+    setScanEvents([]);
     if (!cameraPermission?.granted) {
       const result = await requestCameraPermission();
       if (!result.granted) {
@@ -129,22 +164,26 @@ export default function AddBookScreen() {
     setScannerOpen(true);
   };
 
-  const handleBarcode = async ({ data }: { data: string }) => {
+  const handleBarcode = async ({ type, data }: { type: string; data: string }) => {
     // Handler hep bağlı kalır; tekrar taramayı ref ile engelleriz.
     // (undefined'a çevirip geri bağlamak bazı cihazlarda taramayı kalıcı durduruyor)
+    logScan(`okundu: ${type} → ${data}`);
     if (scannedRef.current) return;
     scannedRef.current = true;
     setScanLoading(true);
     try {
       const item = await lookupByISBN(data);
       if (item && item.title) {
+        logScan(`bulundu: ${item.title}`);
         selectResult(item);
         setScannerOpen(false);
       } else {
+        logScan('Open Library sonucu boş');
         setScanError('Kitap bulunamadı. ISBN: ' + data);
         scannedRef.current = false;
       }
     } catch {
+      logScan('ağ hatası');
       setScanError('Bağlantı hatası, tekrar deneyin.');
       scannedRef.current = false;
     } finally {
@@ -188,6 +227,7 @@ export default function AddBookScreen() {
 
   return (
     <View style={{ flex: 1 }}>
+      <KeyboardDoneBar />
       {/* Tarayıcıdan çekilen kapak fotoğrafı için kırpma adımı */}
       <CoverCropper
         uri={scanCropUri}
@@ -203,49 +243,6 @@ export default function AddBookScreen() {
         canRemove={!!coverImage}
         onRemove={() => setCoverImage(undefined)}
       />
-
-      {/* Barcode scanner modal */}
-      <Modal visible={scannerOpen} animationType="slide" onRequestClose={() => setScannerOpen(false)}>
-        <View style={styles.scannerContainer}>
-          <CameraView
-            ref={cameraRef}
-            style={StyleSheet.absoluteFill}
-            facing="back"
-            autofocus="on"
-            barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a'] }}
-            onBarcodeScanned={handleBarcode}
-          />
-          <View style={styles.scannerOverlay}>
-            <View style={styles.scannerFrame} />
-            <Text style={styles.scannerHint}>Kitabın barkodunu çerçeveye getir</Text>
-          </View>
-          {scanLoading && (
-            <View style={styles.scannerLoadingOverlay}>
-              <ActivityIndicator size="large" color="#fff" />
-              <Text style={styles.scannerLoadingText}>Kitap aranıyor…</Text>
-            </View>
-          )}
-          <Pressable
-            style={[styles.scannerClose, { top: insets.top + 12 }]}
-            onPress={() => setScannerOpen(false)}
-            accessibilityLabel="Tarayıcıyı kapat"
-            accessibilityRole="button"
-          >
-            <Ionicons name="close" size={20} color="#fff" />
-          </Pressable>
-          <View style={[styles.scannerFooter, { paddingBottom: insets.bottom + 20 }]}>
-            <Pressable
-              style={styles.scannerFallbackBtn}
-              onPress={captureCoverFromScanner}
-              accessibilityLabel="Kapak fotoğrafı çekip elle ekle"
-              accessibilityRole="button"
-            >
-              <Ionicons name="camera-outline" size={16} color="#F5F0E8" />
-              <Text style={styles.scannerFallbackText}>Barkod okunmuyor mu? Kapağın fotoğrafını çek</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
 
       {/* Dimmed backdrop */}
       <Pressable
@@ -282,6 +279,8 @@ export default function AddBookScreen() {
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           contentContainerStyle={{ gap: 10, paddingBottom: 24 }}
         >
+          {/* Boş alana dokununca klavye kapanır */}
+          <Pressable onPress={Keyboard.dismiss} accessible={false} style={{ gap: 10 }}>
           {/* Cover preview + color picker */}
           <View style={styles.coverRow}>
             <Pressable onPress={() => setPickerVisible(true)} style={{ position: 'relative' }}>
@@ -310,6 +309,22 @@ export default function AddBookScreen() {
               </View>
             </View>
           </View>
+
+          {/* Arka plan aramasından gelen kapak önerisi */}
+          {coverSuggestion && !coverImage && (
+            <Pressable
+              onPress={() => { Haptics.selectionAsync(); setCoverImage(coverSuggestion); setCoverSuggestion(null); }}
+              style={[styles.coverSuggestRow, { backgroundColor: t.bgSoft, borderColor: t.border }]}
+              accessibilityLabel="Önerilen kapağı kullan"
+              accessibilityRole="button"
+            >
+              <Image source={{ uri: coverSuggestion }} style={styles.coverSuggestThumb} resizeMode="cover" />
+              <Text style={[styles.coverSuggestText, { color: t.muted }]}>
+                Bu kapağı bulduk — <Text style={{ color: t.fg, fontWeight: '600' }}>kullan</Text>
+              </Text>
+              <Ionicons name="add-circle-outline" size={16} color={t.muted} />
+            </Pressable>
+          )}
 
           {/* Kitap adı + arama */}
           <View>
@@ -356,7 +371,7 @@ export default function AddBookScreen() {
                   >
                     {item.coverId ? (
                       <Image
-                        source={{ uri: coverUrl(item.coverId) }}
+                        source={{ uri: coverUrlFromId(item.coverId, 'S') }}
                         style={styles.resultCover}
                         resizeMode="cover"
                       />
@@ -403,6 +418,7 @@ export default function AddBookScreen() {
                 placeholder="340"
                 placeholderTextColor={t.mutedStrong}
                 keyboardType="number-pad"
+                {...doneBarProps}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -472,9 +488,64 @@ export default function AddBookScreen() {
               Kitabı ekle
             </Text>
           </ScalePressable>
+          </Pressable>
         </ScrollView>
         </KeyboardAvoidingView>
       </View>
+
+      {/* Barkod tarayıcı — Modal İÇİNDE DEĞİL: expo-camera'nın onBarcodeScanned'i
+          iOS'ta RN Modal içinde güvenilir tetiklenmiyor (expo/expo#28846).
+          Tam ekran overlay olarak en üstte render edilir. */}
+      {scannerOpen && (
+        <View style={[StyleSheet.absoluteFill, styles.scannerContainer, { zIndex: 100, elevation: 100 }]}>
+          <CameraView
+            ref={cameraRef}
+            style={StyleSheet.absoluteFill}
+            facing="back"
+            autofocus="on"
+            barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a'] }}
+            onBarcodeScanned={handleBarcode}
+            onCameraReady={() => logScan('kamera hazır, taranıyor…')}
+          />
+          <View style={styles.scannerOverlay}>
+            <View style={styles.scannerFrame} />
+            <Text style={styles.scannerHint}>Kitabın barkodunu çerçeveye getir</Text>
+          </View>
+          {/* Debug: tarama denemeleri canlı görünür (yalnızca geliştirmede) */}
+          {__DEV__ && scanEvents.length > 0 && (
+            <View style={[styles.scanDebug, { top: insets.top + 64 }]}>
+              {scanEvents.map((e, i) => (
+                <Text key={i} style={styles.scanDebugText}>{e}</Text>
+              ))}
+            </View>
+          )}
+          {scanLoading && (
+            <View style={styles.scannerLoadingOverlay}>
+              <ActivityIndicator size="large" color="#fff" />
+              <Text style={styles.scannerLoadingText}>Kitap aranıyor…</Text>
+            </View>
+          )}
+          <Pressable
+            style={[styles.scannerClose, { top: insets.top + 12 }]}
+            onPress={() => setScannerOpen(false)}
+            accessibilityLabel="Tarayıcıyı kapat"
+            accessibilityRole="button"
+          >
+            <Ionicons name="close" size={20} color="#fff" />
+          </Pressable>
+          <View style={[styles.scannerFooter, { paddingBottom: insets.bottom + 20 }]}>
+            <Pressable
+              style={styles.scannerFallbackBtn}
+              onPress={captureCoverFromScanner}
+              accessibilityLabel="Kapak fotoğrafı çekip elle ekle"
+              accessibilityRole="button"
+            >
+              <Ionicons name="camera-outline" size={16} color="#F5F0E8" />
+              <Text style={styles.scannerFallbackText}>Barkod okunmuyor mu? Kapağın fotoğrafını çek</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -499,6 +570,12 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 3, elevation: 2,
   },
   colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  coverSuggestRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8,
+  },
+  coverSuggestThumb: { width: 24, height: 36, borderRadius: 3 },
+  coverSuggestText: { flex: 1, fontSize: 12 },
   colorSwatch: { width: 22, height: 22, borderRadius: 11 },
   fieldLabel: {
     fontSize: 10, fontWeight: '600', letterSpacing: 1.5,
@@ -567,4 +644,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12, borderRadius: 24, minHeight: 44,
   },
   scannerFallbackText: { color: '#F5F0E8', fontSize: 13, fontWeight: '600' },
+  scanDebug: {
+    position: 'absolute', left: 16,
+    backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 6, gap: 2,
+  },
+  scanDebugText: { color: '#4ecb91', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
 });
