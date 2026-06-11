@@ -171,7 +171,10 @@ export default function EditBookScreen() {
           {/* Boş alana dokununca klavye kapanır */}
           <Pressable onPress={Keyboard.dismiss} accessible={false}>
           <View style={styles.coverRow}>
-            <Pressable onPress={() => setPickerVisible(true)} style={{ position: 'relative' }}>
+            <Pressable
+              onPress={() => { console.log('[PhotoPicker] 0/6 sheet açılıyor (edit-book)'); setPickerVisible(true); }}
+              style={{ position: 'relative' }}
+            >
               <BookCover title={title} color={color} coverImage={coverImage} size={76} radius={4} />
               <View style={[styles.coverEditBadge, { backgroundColor: t.surface }]}>
                 <Ionicons name="camera" size={11} color={t.fg} />

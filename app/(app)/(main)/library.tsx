@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet, Image,
-  Modal, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
+  Modal, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, DevSettings,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -350,7 +350,7 @@ export default function LibraryScreen() {
   const { t, isDark, toggle } = useTheme();
   const { books, sessions, addBook, resetAll } = useBooks();
   const { yearlyGoal, monthlyGoal, setYearlyGoal, setMonthlyGoal } = useGoal();
-  const { isPro, showPaywall } = usePro();
+  const { isPro, showPaywall, toggleProForDev } = usePro();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [view, setView] = useState<ViewMode>('monthly');
@@ -589,6 +589,42 @@ export default function LibraryScreen() {
                 <Text style={[styles.settingsRowLabel, { color: t.orange }]}>Tüm verileri sil</Text>
               </View>
             </Pressable>
+
+            {/* Yalnızca geliştirmede: Free/Pro deneyimleri arasında geçiş */}
+            {__DEV__ && (
+              <Pressable
+                style={[styles.settingsRow, { borderColor: t.border }]}
+                onPress={() => { Haptics.selectionAsync(); toggleProForDev(); }}
+              >
+                <View style={styles.settingsRowLeft}>
+                  <Ionicons name={isPro ? 'star' : 'star-outline'} size={16} color={t.warning} />
+                  <Text style={[styles.settingsRowLabel, { color: t.fg }]}>
+                    Pro&apos;yu {isPro ? 'kapat' : 'aç'} (test)
+                  </Text>
+                </View>
+                <Text style={[styles.settingsRowMeta, { color: isPro ? t.primary : t.muted }]}>
+                  {isPro ? 'PRO' : 'FREE'} · DEV
+                </Text>
+              </Pressable>
+            )}
+
+            {/* Yalnızca geliştirmede: ilk kullanıcı deneyimini test etmek için tam sıfırlama */}
+            {__DEV__ && (
+              <Pressable
+                style={[styles.settingsRow, { borderColor: t.border }]}
+                onPress={async () => {
+                  console.log('[DevReset] AsyncStorage temizleniyor, uygulama yeniden başlatılıyor');
+                  await AsyncStorage.clear();
+                  DevSettings.reload();
+                }}
+              >
+                <View style={styles.settingsRowLeft}>
+                  <Ionicons name="refresh-outline" size={16} color={t.orange} />
+                  <Text style={[styles.settingsRowLabel, { color: t.orange }]}>Tüm verileri sıfırla (test)</Text>
+                </View>
+                <Text style={[styles.settingsRowMeta, { color: t.mutedStrong }]}>DEV</Text>
+              </Pressable>
+            )}
 
             <Text style={[styles.settingsVersion, { color: t.mutedStrong }]}>ayraç v1.0</Text>
           </Pressable>

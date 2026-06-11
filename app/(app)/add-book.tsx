@@ -283,7 +283,10 @@ export default function AddBookScreen() {
           <Pressable onPress={Keyboard.dismiss} accessible={false} style={{ gap: 10 }}>
           {/* Cover preview + color picker */}
           <View style={styles.coverRow}>
-            <Pressable onPress={() => setPickerVisible(true)} style={{ position: 'relative' }}>
+            <Pressable
+              onPress={() => { console.log('[PhotoPicker] 0/6 sheet açılıyor (add-book)'); setPickerVisible(true); }}
+              style={{ position: 'relative' }}
+            >
               <BookCover title={title} color={color} coverImage={coverImage} size={76} radius={4} />
               <View style={[styles.coverEditBadge, { backgroundColor: t.surface }]}>
                 <Ionicons name="camera" size={11} color={t.fg} />

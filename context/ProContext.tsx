@@ -64,11 +64,14 @@ const STORAGE_KEY = '@ayrac_is_pro';
 type ProContextValue = {
   isPro: boolean;
   showPaywall: (trigger: PaywallTrigger) => void;
+  /** Yalnızca geliştirme: Free/Pro deneyimleri arasında geçiş. Production'da no-op. */
+  toggleProForDev: () => void;
 };
 
 const ProContext = createContext<ProContextValue>({
   isPro: false,
   showPaywall: () => {},
+  toggleProForDev: () => {},
 });
 
 export function ProProvider({ children }: { children: React.ReactNode }) {
@@ -101,10 +104,21 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
     setVisible(false);
   };
 
+  // __DEV__ dışında çağrılsa bile hiçbir şey yapmaz — UI zaten yalnızca DEV'de gösteriyor
+  const toggleProForDev = () => {
+    if (!__DEV__) return;
+    setIsPro((prev) => {
+      const next = !prev;
+      AsyncStorage.setItem(STORAGE_KEY, next ? 'true' : 'false').catch(() => {});
+      console.log('[DevPro] isPro →', next);
+      return next;
+    });
+  };
+
   const copy = TRIGGER_COPY[trigger];
 
   return (
-    <ProContext.Provider value={{ isPro, showPaywall }}>
+    <ProContext.Provider value={{ isPro, showPaywall, toggleProForDev }}>
       {children}
       <Modal
         visible={visible}

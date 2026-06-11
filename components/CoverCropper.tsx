@@ -31,6 +31,7 @@ export function CoverCropper({ uri, onDone, onCancel }: {
 
   useEffect(() => {
     if (!uri) return;
+    console.log('[CoverCropper] açıldı, boyut alınıyor:', uri);
     setImgSize(null);
     setBusy(false);
     tx.value = 0;
@@ -38,8 +39,15 @@ export function CoverCropper({ uri, onDone, onCancel }: {
     scale.value = 1;
     Image.getSize(
       uri,
-      (w, h) => setImgSize({ w, h }),
-      () => onCancel(),
+      (w, h) => {
+        console.log('[CoverCropper] görüntü boyutu:', w, 'x', h);
+        setImgSize({ w, h });
+      },
+      (err) => {
+        // Boyut alınamazsa kırpma adımını atla, fotoğrafı olduğu gibi kullan
+        console.log('[CoverCropper] getSize HATASI, kırpmasız devam:', err);
+        onDone(uri);
+      },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uri]);
@@ -96,6 +104,7 @@ export function CoverCropper({ uri, onDone, onCancel }: {
       const cy = imgSize.h / 2 - ty.value / T;
       const originX = Math.max(0, Math.min(imgSize.w - cw, cx - cw / 2));
       const originY = Math.max(0, Math.min(imgSize.h - ch, cy - ch / 2));
+      console.log('[CoverCropper] kırpılıyor:', Math.round(originX), Math.round(originY), Math.round(cw), Math.round(ch));
       const result = await ImageManipulator.manipulateAsync(
         uri,
         [{
@@ -108,9 +117,12 @@ export function CoverCropper({ uri, onDone, onCancel }: {
         }],
         { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG },
       );
+      console.log('[CoverCropper] kırpma sonucu:', result.uri);
       onDone(result.uri);
-    } catch {
-      onCancel();
+    } catch (e) {
+      // Kırpma başarısızsa fotoğrafı kırpmasız kullan — kullanıcıyı boşa düşürme
+      console.log('[CoverCropper] kırpma HATASI, kırpmasız devam:', e);
+      onDone(uri);
     } finally {
       setBusy(false);
     }
