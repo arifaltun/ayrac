@@ -19,7 +19,7 @@ const CARD_W = W - 48;
 const STORY_H = CARD_W * (16 / 9);
 const FEED_H = CARD_W;
 
-type Format = 'story' | 'feed' | 'review';
+type Format = 'story' | 'feed';
 type CardStyle = 'dark' | 'light' | 'minimal';
 
 const PALETTE = [
@@ -28,6 +28,7 @@ const PALETTE = [
   '#ef4444', '#10b981', '#a855f7', '#6366f1',
 ];
 
+// Kart içi yıldızlar — kart capture edildiği için tema değil, kart varyantına göre sabit renk
 function Stars({ value, size = 14, dark = true }: { value: number; size?: number; dark?: boolean }) {
   return (
     <View style={{ flexDirection: 'row', gap: 3 }}>
@@ -36,37 +37,35 @@ function Stars({ value, size = 14, dark = true }: { value: number; size?: number
           key={i}
           name={i <= value ? 'star' : 'star-outline'}
           size={size}
-          color={i <= value ? '#f5a124' : dark ? 'rgba(245,240,232,0.25)' : 'rgba(0,0,0,0.2)'}
+          color={i <= value ? '#f5a124' : dark ? 'rgba(245,240,232,0.3)' : 'rgba(29,24,18,0.25)'}
         />
       ))}
     </View>
   );
 }
 
-function ReviewCard({ title, rating, accentColor }: {
-  title: string; rating: number; accentColor: string; review: string;
+// Kapak yoksa zarif placeholder: vurgu renginde blok, sırt çizgisi, serif baş harf
+function CoverArt({ title, accentColor, coverImage, w, h }: {
+  title: string; accentColor: string; coverImage?: string; w: number; h: number;
 }) {
+  if (coverImage) {
+    return <Image source={{ uri: coverImage }} style={{ width: w, height: h, borderRadius: 6 }} resizeMode="cover" />;
+  }
   return (
-    <View style={[styles.card, { height: STORY_H, backgroundColor: '#0a0a0a', justifyContent: 'space-between' }]}>
-      <View style={[styles.cardAccent, { backgroundColor: accentColor, opacity: 0.15 }]} />
-      <View style={styles.cardTop}>
-        <View style={styles.appBadge}>
-          <Ionicons name="bookmark" size={10} color="#000" />
-          <Text style={styles.appBadgeText}>ayraç</Text>
-        </View>
-      </View>
-      <View style={styles.reviewCardCenter}>
-        <Text style={[styles.reviewCardLabel, { color: accentColor }]}>DÜŞÜNCELERİM</Text>
-        <Text style={styles.reviewCardTitle} numberOfLines={2}>{title}</Text>
-        {rating > 0 && <View style={{ marginBottom: 24 }}><Stars value={rating} size={15} /></View>}
-      </View>
-      <View style={styles.cardBottom}>
-        <Text style={styles.cardBottomText}>ayraç · okuma takip</Text>
-      </View>
+    <View style={{
+      width: w, height: h, borderRadius: 6, backgroundColor: accentColor,
+      alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+    }}>
+      <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: Math.max(4, w * 0.06), backgroundColor: 'rgba(0,0,0,0.25)' }} />
+      <Text style={{ fontFamily: fonts.serif, fontSize: h * 0.3, color: 'rgba(255,255,255,0.9)' }}>
+        {title.trim()[0]?.toUpperCase() ?? 'K'}
+      </Text>
     </View>
   );
 }
 
+// BİTİRDİM kartı: kapak + başlık + yazar + yıldız + düşünce (varsa) + ayraç logosu.
+// Üç varyant da (Klasik/Açık/Minimal) aynı öğeleri taşır; minimal kapaksız, tipografik.
 function ShareCard({ format, title, author, rating, accentColor, coverImage, review, cardStyle }: {
   format: Format;
   title: string;
@@ -77,88 +76,104 @@ function ShareCard({ format, title, author, rating, accentColor, coverImage, rev
   review?: string;
   cardStyle: CardStyle;
 }) {
-  if (format === 'review' && review) {
-    return <ReviewCard title={title} rating={rating} accentColor={accentColor} review={review} />;
-  }
-
-  const cardH = format === 'story' ? STORY_H : FEED_H;
+  const isStory = format === 'story';
+  const cardH = isStory ? STORY_H : FEED_H;
   const isLight = cardStyle === 'light';
   const isMinimal = cardStyle === 'minimal';
-  const bg = isLight ? '#F5F0E8' : '#0a0a0a';
-  const fg = isLight ? '#151b28' : '#F5F0E8';
-  const fgMuted = isLight ? 'rgba(21,27,40,0.45)' : 'rgba(245,240,232,0.5)';
-  const fgFaint = isLight ? 'rgba(21,27,40,0.15)' : 'rgba(245,240,232,0.2)';
-  const badgeBg = isLight ? '#151b28' : '#F5F0E8';
-  const badgeFg = isLight ? '#F5F0E8' : '#000';
-  const badgeIcon = isLight ? '#F5F0E8' : '#000';
 
-  if (isMinimal) {
-    return (
-      <View style={[styles.card, { height: cardH, backgroundColor: bg, justifyContent: 'space-between' }]}>
-        <View style={[styles.cardAccent, { backgroundColor: accentColor, opacity: isLight ? 0.08 : 0.1 }]} />
-        <View style={[styles.cardTop, { justifyContent: 'space-between', alignItems: 'center' }]}>
-          <Text style={[styles.cardFinished, { color: accentColor, fontSize: 9 }]}>BİTİRDİM</Text>
-          <View style={[styles.appBadge, { backgroundColor: badgeBg }]}>
-            <Ionicons name="bookmark" size={10} color={badgeIcon} />
-            <Text style={[styles.appBadgeText, { color: badgeFg }]}>ayraç</Text>
-          </View>
-        </View>
-        <View style={styles.minimalCenter}>
-          <Text style={[styles.minimalTitle, { color: fg }]} numberOfLines={4}>{title}</Text>
-          <Text style={[styles.minimalAuthor, { color: fgMuted }]} numberOfLines={1}>{author}</Text>
-          {rating > 0 && (
-            <View style={{ marginTop: 14 }}>
-              <Stars value={rating} size={format === 'feed' ? 14 : 18} dark={!isLight} />
-            </View>
-          )}
-        </View>
-        <View style={styles.cardBottom}>
-          <Text style={[styles.cardBottomText, { color: fgFaint }]}>ayraç · okuma takip</Text>
-        </View>
+  // Sıcak, edebi zemin: düz siyah yerine kahve tonlu koyu; açıkta krem
+  const bg = isLight ? '#F5F0E8' : '#0d0b09';
+  const fg = isLight ? '#1d1812' : '#F5F0E8';
+  const fgMuted = isLight ? 'rgba(29,24,18,0.55)' : 'rgba(245,240,232,0.55)';
+  const fgSoft = isLight ? 'rgba(29,24,18,0.78)' : 'rgba(245,240,232,0.8)';
+  const fgFaint = isLight ? 'rgba(29,24,18,0.35)' : 'rgba(245,240,232,0.35)';
+  const frame = isLight ? 'rgba(29,24,18,0.16)' : 'rgba(245,240,232,0.18)';
+  const glyph = isLight ? 'rgba(29,24,18,0.06)' : 'rgba(245,240,232,0.07)';
+
+  const titleSize = isMinimal ? (isStory ? 34 : 24) : isStory ? 28 : 20;
+
+  const header = (
+    <View style={styles.cardHeaderRow}>
+      <View style={{ gap: 6 }}>
+        <Text style={[styles.cardFinished, { color: accentColor }]}>BİTİRDİM</Text>
+        <View style={{ width: 28, height: 2, backgroundColor: accentColor, opacity: 0.85 }} />
       </View>
-    );
-  }
+      <View style={[styles.appBadge, { backgroundColor: fg }]}>
+        <Ionicons name="bookmark" size={10} color={bg} />
+        <Text style={[styles.appBadgeText, { color: bg }]}>ayraç</Text>
+      </View>
+    </View>
+  );
+
+  const titleBlock = (
+    <>
+      <Text
+        style={[styles.cardTitle, { color: fg, fontSize: titleSize, lineHeight: titleSize * 1.18 }]}
+        numberOfLines={isStory ? 3 : 2}
+      >
+        {title}
+      </Text>
+      <Text style={[styles.cardAuthor, { color: fgMuted }]} numberOfLines={1}>{author}</Text>
+      {rating > 0 && (
+        <View style={{ marginTop: isStory ? 12 : 8 }}>
+          <Stars value={rating} size={isStory ? 16 : 13} dark={!isLight} />
+        </View>
+      )}
+    </>
+  );
+
+  const reviewBlock = review ? (
+    <Text
+      style={[
+        styles.cardReview,
+        {
+          color: fgSoft,
+          fontSize: isStory ? 15 : 12,
+          lineHeight: isStory ? 24 : 18,
+          marginTop: isStory ? 20 : 12,
+        },
+      ]}
+      numberOfLines={isStory ? 6 : 2}
+    >
+      “{review}”
+    </Text>
+  ) : null;
 
   return (
     <View style={[styles.card, { height: cardH, backgroundColor: bg }]}>
-      <View style={[styles.cardAccent, { backgroundColor: accentColor, opacity: isLight ? 0.08 : 0.12 }]} />
-      <View style={styles.cardTop}>
-        <View style={[styles.appBadge, { backgroundColor: badgeBg }]}>
-          <Ionicons name="bookmark" size={10} color={badgeIcon} />
-          <Text style={[styles.appBadgeText, { color: badgeFg }]}>ayraç</Text>
-        </View>
-      </View>
-      <View style={[styles.cardCenter, format === 'feed' && { paddingVertical: 20 }]}>
-        {coverImage ? (
-          <Image
-            source={{ uri: coverImage }}
-            style={[styles.cardCover, format === 'story' && { width: 110, height: 160 }]}
-            resizeMode="cover"
-          />
+      <View style={[styles.cardAccent, { backgroundColor: accentColor, opacity: isLight ? 0.06 : 0.09 }]} />
+      {/* Doku: dev, soluk serif tırnak işareti */}
+      <Text style={[styles.bgGlyph, { color: glyph, fontSize: isStory ? 230 : 150, lineHeight: isStory ? 230 : 150 }]}>
+        ”
+      </Text>
+      {/* Editöryel çerçeve */}
+      <View pointerEvents="none" style={[styles.cardFrame, { borderColor: frame }]} />
+
+      <View style={[styles.cardInner, { padding: isStory ? 32 : 26 }]}>
+        {header}
+
+        {isStory ? (
+          <View style={{ flex: 1, justifyContent: 'center' }}>
+            {!isMinimal && (
+              <View style={{ marginBottom: 22 }}>
+                <CoverArt title={title} accentColor={accentColor} coverImage={coverImage} w={116} h={166} />
+              </View>
+            )}
+            {titleBlock}
+            {reviewBlock}
+          </View>
         ) : (
-          <View style={[
-            styles.cardCoverPlaceholder,
-            { backgroundColor: accentColor },
-            format === 'story' && { width: 110, height: 160 },
-          ]}>
-            <View style={styles.cardCoverSpine} />
-            <Text style={styles.cardCoverLetter}>{title[0]?.toUpperCase() ?? 'K'}</Text>
+          <View style={{ flex: 1, justifyContent: 'center', gap: 0 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+              {!isMinimal && (
+                <CoverArt title={title} accentColor={accentColor} coverImage={coverImage} w={76} h={108} />
+              )}
+              <View style={{ flex: 1 }}>{titleBlock}</View>
+            </View>
+            {reviewBlock}
           </View>
         )}
-        <View style={styles.cardText}>
-          <Text style={[styles.cardFinished, { color: accentColor }]}>BİTİRDİM</Text>
-          <Text style={[styles.cardTitle, { color: fg }]} numberOfLines={format === 'feed' ? 2 : 3}>
-            {title}
-          </Text>
-          <Text style={[styles.cardAuthor, { color: fgMuted }]} numberOfLines={1}>{author}</Text>
-          {rating > 0 && (
-            <View style={{ marginTop: 10 }}>
-              <Stars value={rating} size={format === 'feed' ? 13 : 16} dark={!isLight} />
-            </View>
-          )}
-        </View>
-      </View>
-      <View style={styles.cardBottom}>
+
         <Text style={[styles.cardBottomText, { color: fgFaint }]}>ayraç · okuma takip</Text>
       </View>
     </View>
@@ -237,30 +252,32 @@ export default function ShareBookScreen() {
     }
   };
 
-  const formats = ['story', 'feed', ...(book.review ? ['review'] : [])] as Format[];
-  const formatLabel = (f: Format) => f === 'story' ? 'Story' : f === 'feed' ? 'Feed' : 'Düşünce';
-
   return (
     <View style={[styles.container, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="close" size={18} color="rgba(255,255,255,0.6)" />
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          accessibilityLabel="Kapat"
+          accessibilityRole="button"
+        >
+          <Ionicons name="close" size={18} color="rgba(245,240,232,0.7)" />
         </Pressable>
         <Text style={styles.headerTitle}>Paylaş</Text>
-        <View style={{ width: 36 }} />
+        <View style={{ width: 44 }} />
       </View>
 
       {/* Format toggle */}
       <View style={styles.formatToggle}>
-        {formats.map((f) => (
+        {(['story', 'feed'] as Format[]).map((f) => (
           <Pressable
             key={f}
             onPress={() => animateChange(() => setFormat(f))}
             style={[styles.formatBtn, format === f && styles.formatBtnActive]}
           >
             <Text style={[styles.formatBtnText, format === f && styles.formatBtnTextActive]}>
-              {formatLabel(f)}
+              {f === 'story' ? 'Story' : 'Feed'}
             </Text>
           </Pressable>
         ))}
@@ -289,39 +306,37 @@ export default function ShareBookScreen() {
       </View>
 
       {/* Customization panel */}
-      {format !== 'review' && (
-        <View style={styles.customPanel}>
-          {/* Style toggle */}
-          <View style={styles.styleRow}>
-            {(['dark', 'light', 'minimal'] as CardStyle[]).map((s) => (
-              <Pressable
-                key={s}
-                onPress={() => animateChange(() => setCardStyle(s))}
-                style={[styles.styleBtn, cardStyle === s && styles.styleBtnActive]}
-              >
-                <Text style={[styles.styleBtnText, cardStyle === s && styles.styleBtnTextActive]}>
-                  {s === 'dark' ? 'Klasik' : s === 'light' ? 'Açık' : 'Minimal'}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {/* Color palette */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.paletteScroll}>
-            {PALETTE.map((c) => (
-              <Pressable
-                key={c}
-                onPress={() => animateChange(() => setAccentColor(c))}
-                style={[styles.paletteSwatch, { backgroundColor: c }, accentColor === c && styles.paletteSwatchActive]}
-              >
-                {accentColor === c && (
-                  <Ionicons name="checkmark" size={12} color="#fff" />
-                )}
-              </Pressable>
-            ))}
-          </ScrollView>
+      <View style={styles.customPanel}>
+        {/* Style toggle */}
+        <View style={styles.styleRow}>
+          {(['dark', 'light', 'minimal'] as CardStyle[]).map((s) => (
+            <Pressable
+              key={s}
+              onPress={() => animateChange(() => setCardStyle(s))}
+              style={[styles.styleBtn, cardStyle === s && styles.styleBtnActive]}
+            >
+              <Text style={[styles.styleBtnText, cardStyle === s && styles.styleBtnTextActive]}>
+                {s === 'dark' ? 'Klasik' : s === 'light' ? 'Açık' : 'Minimal'}
+              </Text>
+            </Pressable>
+          ))}
         </View>
-      )}
+
+        {/* Color palette */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.paletteScroll}>
+          {PALETTE.map((c) => (
+            <Pressable
+              key={c}
+              onPress={() => animateChange(() => setAccentColor(c))}
+              style={[styles.paletteSwatch, { backgroundColor: c }, accentColor === c && styles.paletteSwatchActive]}
+            >
+              {accentColor === c && (
+                <Ionicons name="checkmark" size={12} color="#fff" />
+              )}
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* Actions */}
       <View style={styles.actions}>
@@ -363,7 +378,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16,
   },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { color: '#F5F0E8', fontSize: 16, fontWeight: '600', fontFamily: fonts.serifMedium },
   formatToggle: {
     flexDirection: 'row', backgroundColor: '#111', borderRadius: 10, padding: 3, marginBottom: 16,
@@ -389,37 +404,29 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   paletteSwatchActive: { borderWidth: 2, borderColor: '#fff' },
-  // Card styles
-  card: { width: CARD_W, borderRadius: 16, overflow: 'hidden', justifyContent: 'space-between', padding: 24 },
-  cardAccent: { ...StyleSheet.absoluteFillObject as any, borderRadius: 16 },
-  cardTop: { flexDirection: 'row', justifyContent: 'flex-end' },
+  // Card
+  card: { width: CARD_W, borderRadius: 16, overflow: 'hidden' },
+  cardAccent: { ...StyleSheet.absoluteFillObject as object },
+  cardFrame: {
+    position: 'absolute', left: 12, right: 12, top: 12, bottom: 12,
+    borderWidth: 1, borderRadius: 10,
+  },
+  bgGlyph: {
+    position: 'absolute', top: -14, right: 18,
+    fontFamily: fonts.serif,
+  },
+  cardInner: { flex: 1, justifyContent: 'space-between' },
+  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  cardFinished: { fontSize: 11, fontWeight: '800', letterSpacing: 3 },
   appBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#F5F0E8', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20,
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20,
   },
-  appBadgeText: { color: '#000', fontSize: 10, fontWeight: '700', fontFamily: fonts.serifMedium },
-  cardCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 20, paddingVertical: 28 },
-  cardCover: { width: 80, height: 116, borderRadius: 6 },
-  cardCoverPlaceholder: { width: 80, height: 116, borderRadius: 6, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  cardCoverSpine: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, backgroundColor: 'rgba(0,0,0,0.25)' },
-  cardCoverLetter: { color: 'rgba(255,255,255,0.85)', fontSize: 32, fontWeight: '700' },
-  cardText: { flex: 1, gap: 4 },
-  cardFinished: { fontSize: 11, fontWeight: '800', letterSpacing: 2.5, marginBottom: 4 },
-  cardTitle: { fontSize: 22, fontFamily: fonts.serif, lineHeight: 28, letterSpacing: -0.3 },
-  cardAuthor: { fontSize: 13, marginTop: 2 },
-  cardBottom: { alignItems: 'flex-end' },
-  cardBottomText: { fontSize: 10, letterSpacing: 1 },
-  // Minimal style
-  minimalCenter: { flex: 1, justifyContent: 'center', paddingVertical: 20 },
-  minimalTitle: { fontSize: 30, fontFamily: fonts.serif, lineHeight: 36, letterSpacing: -0.5 },
-  minimalAuthor: { fontSize: 14, marginTop: 8 },
-  // Review card
-  reviewCardCenter: { flex: 1, justifyContent: 'center', paddingHorizontal: 4, paddingVertical: 16 },
-  reviewCardLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 2.5, marginBottom: 10 },
-  reviewCardTitle: { color: '#F5F0E8', fontSize: 24, fontFamily: fonts.serif, lineHeight: 30, letterSpacing: -0.3, marginBottom: 14 },
-  reviewOpenQuote: { color: 'rgba(245,240,232,0.18)', fontSize: 72, fontFamily: fonts.serif, lineHeight: 56, marginBottom: 4 },
-  reviewCardText: { color: 'rgba(245,240,232,0.85)', fontSize: 15, lineHeight: 24, fontStyle: 'italic', letterSpacing: 0.1 },
-  reviewCloseQuote: { color: 'rgba(245,240,232,0.18)', fontSize: 72, fontFamily: fonts.serif, lineHeight: 56, textAlign: 'right', marginTop: 4 },
+  appBadgeText: { fontSize: 10, fontWeight: '700', fontFamily: fonts.serifMedium },
+  cardTitle: { fontFamily: fonts.serif, letterSpacing: -0.4 },
+  cardAuthor: { fontSize: 13, marginTop: 6, letterSpacing: 0.2 },
+  cardReview: { fontFamily: fonts.serifRegular, letterSpacing: 0.1 },
+  cardBottomText: { fontSize: 10, letterSpacing: 1, textAlign: 'right' },
   // Actions
   actions: { gap: 8, marginTop: 8 },
   savedBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 4 },

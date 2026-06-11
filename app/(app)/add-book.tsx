@@ -82,6 +82,7 @@ export default function AddBookScreen() {
   const [scanLoading, setScanLoading] = useState(false);
   const [scanError, setScanError] = useState('');
   const scannedRef = useRef(false);
+  const cameraRef = useRef<CameraView>(null);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
   useEffect(() => {
@@ -127,6 +128,8 @@ export default function AddBookScreen() {
   };
 
   const handleBarcode = async ({ data }: { data: string }) => {
+    // Handler hep bağlı kalır; tekrar taramayı ref ile engelleriz.
+    // (undefined'a çevirip geri bağlamak bazı cihazlarda taramayı kalıcı durduruyor)
     if (scannedRef.current) return;
     scannedRef.current = true;
     setScanLoading(true);
@@ -144,6 +147,19 @@ export default function AddBookScreen() {
       scannedRef.current = false;
     } finally {
       setScanLoading(false);
+    }
+  };
+
+  // Barkod okunmazsa: aynı kameradan kapak fotoğrafı çek, manuel akışa geç
+  const captureCoverFromScanner = async () => {
+    try {
+      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.8 });
+      if (photo?.uri) {
+        setCoverImage(photo.uri);
+        setScannerOpen(false);
+      }
+    } catch {
+      setScanError('Fotoğraf çekilemedi, tekrar deneyin.');
     }
   };
 
@@ -169,10 +185,7 @@ export default function AddBookScreen() {
   const inp = [styles.input, { backgroundColor: t.surface2, borderColor: t.border, color: t.fg }];
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <View style={{ flex: 1 }}>
       {/* Photo picker modal */}
       <PhotoPickerSheet
         visible={pickerVisible}
@@ -186,10 +199,12 @@ export default function AddBookScreen() {
       <Modal visible={scannerOpen} animationType="slide" onRequestClose={() => setScannerOpen(false)}>
         <View style={styles.scannerContainer}>
           <CameraView
+            ref={cameraRef}
             style={StyleSheet.absoluteFill}
             facing="back"
-            barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8'] }}
-            onBarcodeScanned={scanLoading ? undefined : handleBarcode}
+            autofocus="on"
+            barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a'] }}
+            onBarcodeScanned={handleBarcode}
           />
           <View style={styles.scannerOverlay}>
             <View style={styles.scannerFrame} />
@@ -204,9 +219,22 @@ export default function AddBookScreen() {
           <Pressable
             style={[styles.scannerClose, { top: insets.top + 12 }]}
             onPress={() => setScannerOpen(false)}
+            accessibilityLabel="Tarayıcıyı kapat"
+            accessibilityRole="button"
           >
             <Ionicons name="close" size={20} color="#fff" />
           </Pressable>
+          <View style={[styles.scannerFooter, { paddingBottom: insets.bottom + 20 }]}>
+            <Pressable
+              style={styles.scannerFallbackBtn}
+              onPress={captureCoverFromScanner}
+              accessibilityLabel="Kapak fotoğrafı çekip elle ekle"
+              accessibilityRole="button"
+            >
+              <Ionicons name="camera-outline" size={16} color="#F5F0E8" />
+              <Text style={styles.scannerFallbackText}>Barkod okunmuyor mu? Kapağın fotoğrafını çek</Text>
+            </Pressable>
+          </View>
         </View>
       </Modal>
 
@@ -235,10 +263,15 @@ export default function AddBookScreen() {
           </Pressable>
         </View>
 
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
         <ScrollView
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ gap: 10 }}
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          contentContainerStyle={{ gap: 10, paddingBottom: 24 }}
         >
           {/* Cover preview + color picker */}
           <View style={styles.coverRow}>
@@ -431,8 +464,9 @@ export default function AddBookScreen() {
             </Text>
           </ScalePressable>
         </ScrollView>
+        </KeyboardAvoidingView>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -510,8 +544,18 @@ const styles = StyleSheet.create({
   scannerLoadingText: { color: '#fff', fontSize: 14 },
   scannerClose: {
     position: 'absolute', right: 20,
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center', justifyContent: 'center',
   },
+  scannerFooter: {
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    alignItems: 'center', paddingHorizontal: 24,
+  },
+  scannerFallbackBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)', borderWidth: 1, borderColor: 'rgba(245,240,232,0.35)',
+    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 24, minHeight: 44,
+  },
+  scannerFallbackText: { color: '#F5F0E8', fontSize: 13, fontWeight: '600' },
 });

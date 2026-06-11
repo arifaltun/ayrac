@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView,
-  StyleSheet, KeyboardAvoidingView, Platform, Alert,
+  StyleSheet, KeyboardAvoidingView, Platform, Alert, Keyboard,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -121,10 +121,7 @@ export default function EditBookScreen() {
   const inputStyle = [styles.input, { backgroundColor: t.bgSoft, borderColor: t.border, color: t.fg }];
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <View style={{ flex: 1 }}>
       {/* Photo picker modal */}
       <PhotoPickerSheet
         visible={pickerVisible}
@@ -157,7 +154,18 @@ export default function EditBookScreen() {
           </Pressable>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          contentContainerStyle={{ paddingBottom: 24 }}
+        >
+          {/* Boş alana dokununca klavye kapanır */}
+          <Pressable onPress={Keyboard.dismiss} accessible={false}>
           <View style={styles.coverRow}>
             <Pressable onPress={() => setPickerVisible(true)} style={{ position: 'relative' }}>
               <BookCover title={title} color={color} coverImage={coverImage} size={76} radius={4} />
@@ -338,9 +346,11 @@ export default function EditBookScreen() {
             <Ionicons name="trash-outline" size={14} color={t.orange} />
             <Text style={[styles.deleteTxt, { color: t.orange }]}>Kitabı sil</Text>
           </ScalePressable>
+          </Pressable>
         </ScrollView>
+        </KeyboardAvoidingView>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

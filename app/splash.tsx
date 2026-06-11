@@ -65,7 +65,10 @@ export default function SplashScreen() {
       if (v === 'true') targetRef.current = '/(app)/(main)/library';
     });
 
-    const timer = setTimeout(continueToApp, 3200);
+    // Bekleme süresi alıntının okuma süresine göre: kelime × 300ms + 1.5s taban (2.5s–6s)
+    const words = quote.text.trim().split(/\s+/).length;
+    const duration = Math.min(6000, Math.max(2500, 1500 + words * 300));
+    const timer = setTimeout(continueToApp, duration);
     return () => clearTimeout(timer);
   }, []);
 

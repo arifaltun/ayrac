@@ -89,14 +89,26 @@ export default function ReadingModeScreen() {
       >
         <View style={styles.promptBackdrop}>
           <View style={styles.promptCard}>
-            <Ionicons name="volume-mute-outline" size={28} color="#fff" />
+            <Ionicons name="volume-mute-outline" size={28} color="#F5F0E8" />
             <Text style={styles.promptTitle}>Telefonunu da sessiz yapmak ister misin?</Text>
             <Text style={styles.promptDesc}>Okuma sırasında bildirimler seni rahatsız etmesin.</Text>
             <View style={styles.promptButtons}>
-              <ScalePressable scale={0.96} style={styles.promptBtnOutline} onPress={() => { Haptics.selectionAsync(); setSilentPromptVisible(false); }}>
-                <Text style={styles.promptBtnOutlineText}>Hayır</Text>
+              <ScalePressable
+                scale={0.96}
+                style={styles.promptBtnOutline}
+                onPress={() => { Haptics.selectionAsync(); setSilentPromptVisible(false); }}
+                accessibilityLabel="Sessize almadan devam et"
+                accessibilityRole="button"
+              >
+                <Text style={styles.promptBtnOutlineText}>Hayır, kalsın</Text>
               </ScalePressable>
-              <ScalePressable scale={0.96} style={styles.promptBtnFill} onPress={openSilentSettings}>
+              <ScalePressable
+                scale={0.96}
+                style={styles.promptBtnFill}
+                onPress={openSilentSettings}
+                accessibilityLabel="Ses ayarlarına git"
+                accessibilityRole="button"
+              >
                 <Text style={styles.promptBtnFillText}>Ayarlara git</Text>
               </ScalePressable>
             </View>
@@ -113,18 +125,30 @@ export default function ReadingModeScreen() {
       >
         <View style={styles.promptBackdrop}>
           <View style={styles.promptCard}>
-            <Ionicons name="checkmark-circle-outline" size={28} color="#fff" />
+            <Ionicons name="checkmark-circle-outline" size={28} color="#F5F0E8" />
             <Text style={styles.promptTitle}>Okumayı bitir</Text>
             <Text style={styles.promptDesc}>
               Bu oturum: {formatTotalTime(elapsed)}{'\n'}
               Toplam: {formatTotalTime(totalAfter)}
             </Text>
             <View style={styles.promptButtons}>
-              <ScalePressable scale={0.96} style={styles.promptBtnOutline} onPress={() => { Haptics.selectionAsync(); setFinishConfirmVisible(false); }}>
+              <ScalePressable
+                scale={0.96}
+                style={styles.promptBtnOutline}
+                onPress={() => { Haptics.selectionAsync(); setFinishConfirmVisible(false); }}
+                accessibilityLabel="Okumaya devam et"
+                accessibilityRole="button"
+              >
                 <Text style={styles.promptBtnOutlineText}>Devam et</Text>
               </ScalePressable>
-              <ScalePressable scale={0.97} style={styles.promptBtnFill} onPress={handleFinish}>
-                <Text style={styles.promptBtnFillText}>Kaydet</Text>
+              <ScalePressable
+                scale={0.97}
+                style={styles.promptBtnFill}
+                onPress={handleFinish}
+                accessibilityLabel="Süreyi kaydet ve çık"
+                accessibilityRole="button"
+              >
+                <Text style={styles.promptBtnFillText}>Kaydet ve çık</Text>
               </ScalePressable>
             </View>
           </View>
@@ -135,14 +159,15 @@ export default function ReadingModeScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Pressable
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFinishConfirmVisible(true); }}
-          style={styles.closeBtn}
-          accessibilityLabel="Okumayı bitir"
+          style={styles.exitBtn}
+          accessibilityLabel="Okuma modundan çık"
           accessibilityRole="button"
         >
-          <Ionicons name="chevron-down" size={22} color="rgba(255,255,255,0.5)" />
+          <Ionicons name="chevron-down" size={16} color="#F5F0E8" />
+          <Text style={styles.exitBtnText}>Çık</Text>
         </Pressable>
         <Text style={styles.headerLabel}>OKUMA MODU</Text>
-        <View style={{ width: 36 }} />
+        <View style={{ width: 72 }} />
       </View>
 
       {/* Book info */}
@@ -192,12 +217,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 12,
   },
-  closeBtn: {
-    width: 36, height: 36,
-    alignItems: 'center', justifyContent: 'center',
+  exitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minHeight: 44,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 22,
+    backgroundColor: 'rgba(245,240,232,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,240,232,0.25)',
+  },
+  exitBtnText: {
+    color: '#F5F0E8',
+    fontSize: 13,
+    fontWeight: '600',
   },
   headerLabel: {
-    color: 'rgba(255,255,255,0.35)',
+    color: 'rgba(245,240,232,0.55)',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 2,
@@ -216,7 +254,7 @@ const styles = StyleSheet.create({
     lineHeight: 34,
   },
   bookAuthor: {
-    color: 'rgba(245,240,232,0.45)',
+    color: 'rgba(245,240,232,0.6)',
     fontSize: 15,
     textAlign: 'center',
   },
@@ -232,13 +270,13 @@ const styles = StyleSheet.create({
     lineHeight: 88,
   },
   timerLabel: {
-    color: 'rgba(245,240,232,0.3)',
+    color: 'rgba(245,240,232,0.5)',
     fontSize: 12,
     letterSpacing: 2,
     textTransform: 'uppercase',
   },
   totalTime: {
-    color: 'rgba(245,240,232,0.35)',
+    color: 'rgba(245,240,232,0.55)',
     fontSize: 13,
     marginTop: 4,
   },
@@ -248,7 +286,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 36,
   },
   footerHint: {
-    color: 'rgba(255,255,255,0.2)',
+    color: 'rgba(245,240,232,0.45)',
     fontSize: 13,
     textAlign: 'center',
   },
@@ -272,7 +310,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   promptCard: {
-    backgroundColor: '#111',
+    backgroundColor: '#16140f',
+    borderWidth: 1,
+    borderColor: 'rgba(245,240,232,0.18)',
     borderRadius: 20,
     padding: 28,
     alignItems: 'center',
@@ -288,7 +328,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   promptDesc: {
-    color: 'rgba(245,240,232,0.5)',
+    color: 'rgba(245,240,232,0.7)',
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 20,
@@ -305,10 +345,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(245,240,232,0.45)',
+    backgroundColor: 'rgba(245,240,232,0.08)',
+    minHeight: 44,
+    justifyContent: 'center',
   },
   promptBtnOutlineText: {
-    color: 'rgba(255,255,255,0.6)',
+    color: '#F5F0E8',
     fontSize: 14,
     fontWeight: '600',
   },
