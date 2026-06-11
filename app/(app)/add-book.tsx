@@ -15,6 +15,7 @@ import { usePro } from '@/context/ProContext';
 import { fonts, BOOK_COLORS } from '@/constants/tokens';
 import { BookCover } from '@/components/BookCover';
 import { PhotoPickerSheet } from '@/components/PhotoPickerSheet';
+import { CoverCropper } from '@/components/CoverCropper';
 import { ScalePressable } from '@/components/ScalePressable';
 
 type Status = 'reading' | 'finished' | 'want';
@@ -77,6 +78,7 @@ export default function AddBookScreen() {
 
   const [coverImage, setCoverImage] = useState<string | undefined>();
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [scanCropUri, setScanCropUri] = useState<string | null>(null);
 
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanLoading, setScanLoading] = useState(false);
@@ -150,13 +152,13 @@ export default function AddBookScreen() {
     }
   };
 
-  // Barkod okunmazsa: aynı kameradan kapak fotoğrafı çek, manuel akışa geç
+  // Barkod okunmazsa: aynı kameradan kapak fotoğrafı çek, kırpma adımına geç
   const captureCoverFromScanner = async () => {
     try {
-      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.8 });
+      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.9 });
       if (photo?.uri) {
-        setCoverImage(photo.uri);
         setScannerOpen(false);
+        setScanCropUri(photo.uri);
       }
     } catch {
       setScanError('Fotoğraf çekilemedi, tekrar deneyin.');
@@ -186,6 +188,13 @@ export default function AddBookScreen() {
 
   return (
     <View style={{ flex: 1 }}>
+      {/* Tarayıcıdan çekilen kapak fotoğrafı için kırpma adımı */}
+      <CoverCropper
+        uri={scanCropUri}
+        onDone={(cropped) => { setScanCropUri(null); setCoverImage(cropped); }}
+        onCancel={() => setScanCropUri(null)}
+      />
+
       {/* Photo picker modal */}
       <PhotoPickerSheet
         visible={pickerVisible}

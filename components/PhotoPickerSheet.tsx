@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/constants/tokens';
+import { CoverCropper } from '@/components/CoverCropper';
 
 // Kapak fotoğrafı seçme alt sayfası — kitap ekleme ve düzenlemede ortak.
+// Seçilen/çekilen fotoğraf 2:3 kırpma adımından geçer; karta tam kapak gider.
 export function PhotoPickerSheet({ visible, onClose, onPicked, canRemove, onRemove }: {
   visible: boolean;
   onClose: () => void;
@@ -13,6 +16,7 @@ export function PhotoPickerSheet({ visible, onClose, onPicked, canRemove, onRemo
   onRemove?: () => void;
 }) {
   const { t } = useTheme();
+  const [rawUri, setRawUri] = useState<string | null>(null);
 
   const pickFromGallery = async () => {
     onClose();
@@ -20,26 +24,26 @@ export function PhotoPickerSheet({ visible, onClose, onPicked, canRemove, onRemo
     if (status !== 'granted') return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [2, 3],
-      quality: 0.8,
+      quality: 0.9,
     });
-    if (!result.canceled) onPicked(result.assets[0].uri);
+    if (!result.canceled) setRawUri(result.assets[0].uri);
   };
 
   const takePhoto = async () => {
     onClose();
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') return;
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [2, 3],
-      quality: 0.8,
-    });
-    if (!result.canceled) onPicked(result.assets[0].uri);
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.9 });
+    if (!result.canceled) setRawUri(result.assets[0].uri);
   };
 
   return (
+    <>
+    <CoverCropper
+      uri={rawUri}
+      onDone={(cropped) => { setRawUri(null); onPicked(cropped); }}
+      onCancel={() => setRawUri(null)}
+    />
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <View style={[styles.sheet, { backgroundColor: t.surface }]}>
@@ -62,6 +66,7 @@ export function PhotoPickerSheet({ visible, onClose, onPicked, canRemove, onRemo
         </View>
       </Pressable>
     </Modal>
+    </>
   );
 }
 

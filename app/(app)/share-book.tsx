@@ -44,22 +44,42 @@ function Stars({ value, size = 14, dark = true }: { value: number; size?: number
   );
 }
 
-// Kapak yoksa zarif placeholder: vurgu renginde blok, sırt çizgisi, serif baş harf
-function CoverArt({ title, accentColor, coverImage, w, h }: {
-  title: string; accentColor: string; coverImage?: string; w: number; h: number;
+// "Kitap objesi" sunumu: sabit 2:3 oran, cover kırpma, yumuşak köşe,
+// dağınık zarif gölge ve sol kenarda cilt/sırt çizgisi. Fotoğraflı ve
+// placeholder kapak aynı muameleyi görür — eski kırpılmamış fotoğraflar
+// da burada 2:3'e oturur.
+function CoverArt({ title, accentColor, coverImage, w, light }: {
+  title: string; accentColor: string; coverImage?: string; w: number; light?: boolean;
 }) {
-  if (coverImage) {
-    return <Image source={{ uri: coverImage }} style={{ width: w, height: h, borderRadius: 6 }} resizeMode="cover" />;
-  }
+  const h = w * 1.5;
+  const radius = Math.max(8, Math.round(w * 0.09));
+  const spineW = Math.max(4, Math.round(w * 0.06));
   return (
     <View style={{
-      width: w, height: h, borderRadius: 6, backgroundColor: accentColor,
-      alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+      width: w,
+      height: h,
+      borderRadius: radius,
+      backgroundColor: coverImage ? '#1a1712' : accentColor,
+      shadowColor: '#000',
+      shadowOpacity: light ? 0.22 : 0.45,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 10,
     }}>
-      <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: Math.max(4, w * 0.06), backgroundColor: 'rgba(0,0,0,0.25)' }} />
-      <Text style={{ fontFamily: fonts.serif, fontSize: h * 0.3, color: 'rgba(255,255,255,0.9)' }}>
-        {title.trim()[0]?.toUpperCase() ?? 'K'}
-      </Text>
+      <View style={{ flex: 1, borderRadius: radius, overflow: 'hidden' }}>
+        {coverImage ? (
+          <Image source={{ uri: coverImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        ) : (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontFamily: fonts.serif, fontSize: h * 0.28, color: 'rgba(255,255,255,0.9)' }}>
+              {title.trim()[0]?.toUpperCase() ?? 'K'}
+            </Text>
+          </View>
+        )}
+        {/* Cilt/sırt: koyu şerit + ince ışık çizgisi — gerçek kitap duruşu */}
+        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: spineW, backgroundColor: 'rgba(0,0,0,0.22)' }} />
+        <View style={{ position: 'absolute', left: spineW, top: 0, bottom: 0, width: 1, backgroundColor: 'rgba(255,255,255,0.18)' }} />
+      </View>
     </View>
   );
 }
@@ -154,9 +174,16 @@ function ShareCard({ format, title, author, rating, accentColor, coverImage, rev
 
         {isStory ? (
           <View style={{ flex: 1, justifyContent: 'center' }}>
-            {!isMinimal && (
+            {/* Minimal: kapak varsa küçük ve zarif; yoksa salt tipografik düzen */}
+            {(coverImage || !isMinimal) && (
               <View style={{ marginBottom: 22 }}>
-                <CoverArt title={title} accentColor={accentColor} coverImage={coverImage} w={116} h={166} />
+                <CoverArt
+                  title={title}
+                  accentColor={accentColor}
+                  coverImage={coverImage}
+                  w={isMinimal ? 72 : 112}
+                  light={isLight}
+                />
               </View>
             )}
             {titleBlock}
@@ -165,8 +192,14 @@ function ShareCard({ format, title, author, rating, accentColor, coverImage, rev
         ) : (
           <View style={{ flex: 1, justifyContent: 'center', gap: 0 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-              {!isMinimal && (
-                <CoverArt title={title} accentColor={accentColor} coverImage={coverImage} w={76} h={108} />
+              {(coverImage || !isMinimal) && (
+                <CoverArt
+                  title={title}
+                  accentColor={accentColor}
+                  coverImage={coverImage}
+                  w={isMinimal ? 56 : 76}
+                  light={isLight}
+                />
               )}
               <View style={{ flex: 1 }}>{titleBlock}</View>
             </View>
