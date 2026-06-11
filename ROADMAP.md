@@ -69,8 +69,16 @@ Her görev tamamlandığında `[ ]` → `[x]` yapılacak.
 - [x] **Yazar adı temizliği** — `normalizeAuthorName`: "Tolstoy, Leo, graf, 1828-1910"
   → "Leo Tolstoy". Arama, ISBN, öneriler ve mevcut kayıtlar (tek seferlik migration,
   `@ayrac_author_norm_v1`).
-- [x] Klavye düzeltmeleri (sayı klavyesine "Tamam" çubuğu, kaydır/dokun-kapat),
-  okuma modu kontrast + belirgin "Çık" butonu, edebi etiketler ("Alıntı", "Notun").
+- [x] **Pro kilitleri** — öneriler, ısı haritası ve not yazma Free'de
+  `ProFeatureGate` ile kilitli (soluk önizleme + paywall); limit bypass'ları kapatıldı.
+- [x] **Okuma modu düzeltmeleri** — diyalog kontrastları okunur seviyeye çıkarıldı,
+  belirgin "Çık" butonu, net buton etiketleri ("Kaydet ve çık").
+- [x] **Klavye düzeltmeleri** — sayı klavyesine "Tamam" çubuğu (`KeyboardDoneBar`),
+  kaydırınca/boş alana dokununca kapanma, KAV yapısı düzeltildi (alan klavye altında kalmıyor).
+- [x] **Bütünsel tutarlılık geçişi** — `finishedAt` veri modeli (istatistikler bitirme
+  tarihiyle), sahte kayıt/giriş yerine tek adımlık isim ekranı + selamlama, ortak
+  bileşenler (BookCover/RatingText/PhotoPickerSheet), temaya duyarlı paywall,
+  edebi etiketler ("Alıntı", "Notun").
 
 ---
 
@@ -81,7 +89,7 @@ Her görev tamamlandığında `[ ]` → `[x]` yapılacak.
   ile varyant zeminlerinin uyumu
 - [ ] **Web yayını** — `expo export` ile statik web çıktısı (app.json `web.output:
   "static"` hazır); tanıtım sayfası + tarayıcıda temel kullanım
-- [ ] **RevenueCat entegrasyonu** — gerçek abonelik (₺29,99/ay); "Pro'ya Geç"
+- [ ] **RevenueCat / IAP entegrasyonu** — gerçek abonelik (₺29,99/ay); "Pro'ya Geç"
   şu an doğrudan Pro yapıyor, paywall'a satın alma/geri yükleme bağlanacak
 - [ ] **TestFlight** — EAS Build ile iOS dağıtımı; development build aynı zamanda
   Expo Go kısıtlarını da kaldırır (bildirimler, media library tam erişim)
