@@ -1,10 +1,25 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/constants/tokens';
 import { CoverCropper } from '@/components/CoverCropper';
+
+// iOS'ta sheet modal'ı kapanmadan kamera/galeri sunulamaz — kapanışı bekle
+const waitForModalDismiss = () =>
+  new Promise<void>((resolve) => setTimeout(resolve, Platform.OS === 'ios' ? 500 : 150));
+
+function permissionDeniedAlert(what: string) {
+  Alert.alert(
+    'İzin gerekiyor',
+    `${what} için Ayarlar'dan ayraç'a izin vermen gerekiyor.`,
+    [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Ayarları aç', onPress: () => Linking.openSettings() },
+    ],
+  );
+}
 
 // Kapak fotoğrafı seçme alt sayfası — kitap ekleme ve düzenlemede ortak.
 // Seçilen/çekilen fotoğraf 2:3 kırpma adımından geçer; karta tam kapak gider.
@@ -20,8 +35,12 @@ export function PhotoPickerSheet({ visible, onClose, onPicked, canRemove, onRemo
 
   const pickFromGallery = async () => {
     onClose();
+    await waitForModalDismiss();
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') return;
+    if (status !== 'granted') {
+      permissionDeniedAlert('Galeriden kapak seçmek');
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.9,
@@ -31,8 +50,12 @@ export function PhotoPickerSheet({ visible, onClose, onPicked, canRemove, onRemo
 
   const takePhoto = async () => {
     onClose();
+    await waitForModalDismiss();
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') return;
+    if (status !== 'granted') {
+      permissionDeniedAlert('Kapak fotoğrafı çekmek');
+      return;
+    }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.9 });
     if (!result.canceled) setRawUri(result.assets[0].uri);
   };
