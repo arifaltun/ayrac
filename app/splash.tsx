@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, StyleSheet, View } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing,
@@ -7,33 +7,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fonts } from '@/constants/tokens';
+import { pickQuote, Quote } from '@/utils/quotes';
 
 const CREAM = '#F5F0E8';
-
-const QUOTES = [
-  { text: 'Bir kitap bitirmek, güzel bir yolculuğun sonuna gelmek gibidir.', author: 'Virginia Woolf' },
-  { text: 'Okumak, başka bir hayat yaşamanın en kolay yoludur.', author: 'Orhan Pamuk' },
-  { text: 'Bütün okuduklarım benim bir parçam oldu.', author: 'Fyodor Dostoyevski' },
-  { text: 'Kitaplar, zaman ötesi yolculuğun biletleridir.', author: 'Franz Kafka' },
-  { text: 'Bir roman okurken iki kere yaşarsın: biri kâğıtta, biri içinde.', author: 'Gabriel García Márquez' },
-  { text: 'Hayal gücü bilgiden daha önemlidir.', author: 'Albert Einstein' },
-  { text: 'Sanatın görevi, gerçeği değil, gerçeğin havasını vermektir.', author: 'Ahmet Hamdi Tanpınar' },
-  { text: 'En büyük servet, kitap dolu bir kütüphanedir.', author: 'Sabahattin Ali' },
-  { text: 'Okumak, dünyayı olduğundan daha büyük görmektir.', author: 'Albert Camus' },
-  { text: 'Güzel kitap; hem gözleri hem de ruhu besler.', author: 'Nazım Hikmet Ran' },
-];
-
-function randomQuote() {
-  return QUOTES[Math.floor(Math.random() * QUOTES.length)];
-}
 
 const easeOut = Easing.out(Easing.cubic);
 
 export default function SplashScreen() {
   const router = useRouter();
-  const quote = useRef(randomQuote()).current;
+  const [quote, setQuote] = useState<Quote | null>(null);
   const targetRef = useRef<'/(onboarding)' | '/(app)/(main)/library'>('/(onboarding)');
   const navigatedRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const continueToApp = () => {
     if (navigatedRef.current) return;
@@ -58,19 +43,33 @@ export default function SplashScreen() {
   useEffect(() => {
     logoOpacity.value = withTiming(1, { duration: 500, easing: easeOut });
     logoY.value = withTiming(0, { duration: 500, easing: easeOut });
-    quoteOpacity.value = withDelay(200, withTiming(1, { duration: 700, easing: easeOut }));
-    quoteY.value = withDelay(200, withTiming(0, { duration: 700, easing: easeOut }));
 
     AsyncStorage.getItem('@ayrac_has_entered').then((v) => {
       if (v === 'true') targetRef.current = '/(app)/(main)/library';
     });
 
-    // Bekleme süresi alıntının okuma süresine göre: kelime × 300ms + 1.5s taban (2.5s–6s)
-    const words = quote.text.trim().split(/\s+/).length;
-    const duration = Math.min(6000, Math.max(2500, 1500 + words * 300));
-    const timer = setTimeout(continueToApp, duration);
-    return () => clearTimeout(timer);
+    pickQuote().then((q) => {
+      setQuote(q);
+      quoteOpacity.value = withDelay(150, withTiming(1, { duration: 700, easing: easeOut }));
+      quoteY.value = withDelay(150, withTiming(0, { duration: 700, easing: easeOut }));
+
+      // Bekleme süresi alıntının okuma süresine göre: kelime × 300ms + 1.5s taban (2.5s–6s)
+      const words = q.text.trim().split(/\s+/).length;
+      const duration = Math.min(6000, Math.max(2500, 1500 + words * 300));
+      timerRef.current = setTimeout(continueToApp, duration);
+    });
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const attribution = quote
+    ? quote.author
+      ? `— ${quote.author}${quote.source ? `, ${quote.source}` : ''}`
+      : '— ayraç'
+    : '';
 
   return (
     <Pressable style={styles.container} onPress={continueToApp}>
@@ -81,10 +80,12 @@ export default function SplashScreen() {
         <Text style={styles.logoText}>ayraç</Text>
       </Animated.View>
 
-      <Animated.View style={[styles.quoteContainer, quoteAnim]}>
-        <Text style={styles.quoteText}>“{quote.text}”</Text>
-        <Text style={styles.authorText}>— {quote.author}</Text>
-      </Animated.View>
+      {quote && (
+        <Animated.View style={[styles.quoteContainer, quoteAnim]}>
+          <Text style={styles.quoteText}>“{quote.text}”</Text>
+          <Text style={styles.authorText}>{attribution}</Text>
+        </Animated.View>
+      )}
     </Pressable>
   );
 }

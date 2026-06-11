@@ -21,6 +21,7 @@ import {
   loadReminderSettings, saveReminderSettings, scheduleReminder,
   cancelReminder, requestNotificationPermission, computeStreak, ReminderSettings,
 } from '@/utils/notifications';
+import { normalizeAuthorName } from '@/utils/authorName';
 
 const MONTHS_TR = [
   'Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
@@ -437,7 +438,7 @@ export default function LibraryScreen() {
           .map((d: any) => ({
             key: d.key,
             title: d.title,
-            author: d.author_name[0],
+            author: normalizeAuthorName(d.author_name[0]),
             pages: d.number_of_pages_median ?? 0,
             coverId: d.cover_i ?? null,
             genre: topGenre,

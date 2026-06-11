@@ -19,6 +19,7 @@ import { CoverCropper } from '@/components/CoverCropper';
 import { ScalePressable } from '@/components/ScalePressable';
 import { KeyboardDoneBar, doneBarProps } from '@/components/KeyboardDoneBar';
 import { RatingSlider } from '@/components/RatingSlider';
+import { normalizeAuthorName } from '@/utils/authorName';
 
 type Status = 'reading' | 'finished' | 'want';
 
@@ -40,7 +41,7 @@ async function searchOpenLibrary(query: string): Promise<OLResult[]> {
   const json = await res.json();
   return (json.docs ?? []).map((doc: any) => ({
     title: doc.title ?? '',
-    author: doc.author_name?.[0] ?? '',
+    author: normalizeAuthorName(doc.author_name?.[0] ?? ''),
     pages: doc.number_of_pages_median ?? 0,
     coverId: doc.cover_i ?? null,
     coverUrl: doc.cover_i ? coverUrlFromId(doc.cover_i) : null,
@@ -73,7 +74,7 @@ async function lookupByISBN(isbn: string): Promise<OLResult | null> {
   const coverId = doc.cover_i ?? null;
   return {
     title: doc.title ?? '',
-    author: doc.author_name?.[0] ?? '',
+    author: normalizeAuthorName(doc.author_name?.[0] ?? ''),
     pages: doc.number_of_pages_median ?? 0,
     coverId,
     coverUrl: await resolveCoverByISBN(isbn, coverId),

@@ -11,15 +11,89 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { fonts } from '@/constants/tokens';
+import { BookCover } from '@/components/BookCover';
 
 const { width: W } = Dimensions.get('window');
 const CREAM = '#F5F0E8';
-// Marka vurgusu: uygulamanın geri kalanıyla aynı krem ton (mavi markada yok)
 const ACCENT = 'rgba(245,240,232,0.55)';
 const ACCENT_STRONG = CREAM;
 
-type Book = { color: string; height: number; rotate: string; mb: number };
-type Slide = { label: string; title: string; description: string; books: Book[] };
+// Mock'lar gerçek veriye bağlanmaz; sabit örnek içerikle render edilir.
+const SAMPLE_BOOKS = [
+  { title: 'Tutunamayanlar', author: 'Oğuz Atay', color: '#8b5a3c', badge: 'Bitti', rating: '9.5' },
+  { title: 'Kürk Mantolu Madonna', author: 'Sabahattin Ali', color: '#1d9e75', badge: 'Devam', rating: null },
+  { title: 'İnce Memed', author: 'Yaşar Kemal', color: '#d85a30', badge: 'Okuyacağım', rating: null },
+];
+
+/* 01 · Kütüphane: gerçek bileşen stilleriyle mini liste */
+function LibraryMock() {
+  return (
+    <View style={[mock.frame, { transform: [{ rotate: '-2deg' }] }]}>
+      {SAMPLE_BOOKS.map((b) => (
+        <View key={b.title} style={mock.bookRow}>
+          <BookCover color={b.color} size={38} title={b.title} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={mock.bookTitle} numberOfLines={1}>{b.title}</Text>
+            <Text style={mock.bookAuthor} numberOfLines={1}>{b.author}</Text>
+            {b.rating && <Text style={mock.bookRating}>{b.rating} <Text style={mock.bookRatingSub}>/ 10</Text></Text>}
+          </View>
+          <View style={mock.badge}>
+            <Text style={mock.badgeText}>{b.badge}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/* 02 · Ay sonu: özet ekranından kesit — hero + istatistikler */
+function WrappedMock() {
+  return (
+    <View style={[mock.frame, { transform: [{ rotate: '1.5deg' }], gap: 10 }]}>
+      <View style={mock.hero}>
+        <Text style={mock.heroKicker}>MAYIS · WRAPPED</Text>
+        <Text style={mock.heroTitle}>4 kitap, 1.286 sayfa</Text>
+        <Text style={mock.heroSub}>En çok okunan tür: Roman</Text>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {([['4', 'KİTAP'], ['1.286', 'SAYFA'], ['8.4', 'ORT. PUAN']] as [string, string][]).map(([v, l]) => (
+          <View key={l} style={mock.statBox}>
+            <Text style={mock.statValue}>{v}</Text>
+            <Text style={mock.statLabel}>{l}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/* 03 · Paylaş: editöryel paylaşım kartının küçültülmüş önizlemesi */
+function ShareMock() {
+  return (
+    <View style={[mock.shareCard, { transform: [{ rotate: '-1.5deg' }] }]}>
+      <View style={mock.shareMastRow}>
+        <Text style={mock.shareMast}>AYRAÇ · OKUMA GÜNLÜĞÜ</Text>
+      </View>
+      <View style={mock.shareRule} />
+      <View style={mock.shareRuleThin} />
+      <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center', marginTop: 18 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={mock.shareKicker}>BİTİRDİM</Text>
+          <View style={mock.shareKickerRule} />
+          <Text style={mock.shareTitle} numberOfLines={2}>Tutunamayanlar</Text>
+          <Text style={mock.shareAuthor}>Oğuz Atay</Text>
+          <Text style={mock.shareRating}>9.5 <Text style={mock.shareRatingSub}>/ 10</Text></Text>
+        </View>
+        <View style={{ transform: [{ rotate: '2.5deg' }] }}>
+          <BookCover color="#8b5a3c" size={92} title="Tutunamayanlar" radius={7} />
+        </View>
+      </View>
+      <Text style={mock.shareFooter}>ayraç · okuma günlüğü</Text>
+    </View>
+  );
+}
+
+type Slide = { label: string; title: string; description: string; visual: 'library' | 'wrapped' | 'share' };
 
 const SLIDES: Slide[] = [
   {
@@ -27,59 +101,31 @@ const SLIDES: Slide[] = [
     title: 'Okuduğun her kitap bir yerde dursun.',
     description:
       'Bitirdiklerin ve okuduklarınla birlikte sade bir kitaplık. Ne okuduğunu hiç unutma.',
-    books: [
-      { color: '#BFA882', height: 148, rotate: '-4deg', mb: 0 },
-      { color: '#3B5C39', height: 188, rotate: '2deg', mb: 24 },
-      { color: '#8B3A3A', height: 168, rotate: '-2deg', mb: 10 },
-      { color: '#7A8B6E', height: 162, rotate: '5deg', mb: 16 },
-    ],
+    visual: 'library',
   },
   {
     label: '02 · AY SONU',
     title: 'Ayın sonunda hazır bir özet.',
     description:
       'Kaç kitap, kaç sayfa, ortalama puanın — paylaşılabilir kartlarla özetlenmiş hâli.',
-    books: [
-      { color: '#4A5FC0', height: 155, rotate: '-3deg', mb: 5 },
-      { color: '#2A8A7A', height: 183, rotate: '1deg', mb: 20 },
-      { color: '#CC6A35', height: 163, rotate: '-2deg', mb: 0 },
-      { color: '#8D6E63', height: 168, rotate: '4deg', mb: 14 },
-    ],
+    visual: 'wrapped',
   },
   {
     label: '03 · PAYLAŞ',
-    title: 'Instagram\'a hazır gelsin.',
+    title: 'Instagram’a hazır gelsin.',
     description:
-      'Ay sonu kartlarını doğrudan story\'e gönder — editöryel, temiz, emoji\'siz.',
-    books: [
-      { color: '#7B5EA7', height: 158, rotate: '-5deg', mb: 14 },
-      { color: '#3A7B5E', height: 188, rotate: '2deg', mb: 0 },
-      { color: '#C4882A', height: 168, rotate: '-1deg', mb: 20 },
-      { color: '#5E7B9A', height: 163, rotate: '3deg', mb: 8 },
-    ],
+      'Bitirdiğin kitabı editöryel, temiz bir kartla doğrudan story’e gönder.',
+    visual: 'share',
   },
 ];
 
 function SlideItem({ slide, height }: { slide: Slide; height: number }) {
   return (
     <View style={{ width: W, height }}>
-      <View style={styles.booksArea}>
-        <View style={styles.booksRow}>
-          {slide.books.map((book, i) => (
-            <View
-              key={i}
-              style={{
-                width: 88,
-                height: book.height,
-                borderRadius: 6,
-                backgroundColor: book.color,
-                marginLeft: i === 0 ? 36 : 10,
-                marginBottom: book.mb,
-                transform: [{ rotate: book.rotate }],
-              }}
-            />
-          ))}
-        </View>
+      <View style={styles.visualArea}>
+        {slide.visual === 'library' && <LibraryMock />}
+        {slide.visual === 'wrapped' && <WrappedMock />}
+        {slide.visual === 'share' && <ShareMock />}
       </View>
 
       <View style={styles.textArea}>
@@ -189,14 +235,12 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     fontSize: 16,
   },
-  booksArea: {
+  visualArea: {
     flex: 1,
+    alignItems: 'center',
     justifyContent: 'flex-end',
-    paddingBottom: 20,
-  },
-  booksRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    paddingBottom: 28,
+    paddingHorizontal: 28,
   },
   textArea: {
     paddingHorizontal: 28,
@@ -260,5 +304,79 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 16,
     fontWeight: '600',
+  },
+});
+
+// Mock stilleri: uygulamanın koyu tema görünümünün sabitlenmiş kopyası.
+// Dokunulamaz, statik; hafif eğimle "vitrin" hissi.
+const mock = StyleSheet.create({
+  frame: {
+    width: Math.min(W - 72, 330),
+    gap: 8,
+  },
+  bookRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    backgroundColor: '#0e0e0e',
+    borderColor: '#1c1c1c',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 11,
+  },
+  bookTitle: { color: CREAM, fontSize: 14, fontWeight: '600', letterSpacing: -0.2 },
+  bookAuthor: { color: 'rgba(245,240,232,0.45)', fontSize: 12, marginTop: 1 },
+  bookRating: { color: CREAM, fontSize: 11, fontFamily: fonts.serifMedium, marginTop: 3 },
+  bookRatingSub: { color: 'rgba(245,240,232,0.45)', fontSize: 9 },
+  badge: {
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
+    backgroundColor: 'rgba(245,240,232,0.07)',
+  },
+  badgeText: { color: CREAM, fontSize: 10, fontWeight: '600' },
+  hero: {
+    backgroundColor: CREAM,
+    borderRadius: 14,
+    padding: 16,
+    gap: 3,
+  },
+  heroKicker: { color: 'rgba(0,0,0,0.55)', fontSize: 8, letterSpacing: 2, fontWeight: '700' },
+  heroTitle: { color: '#000', fontSize: 21, fontFamily: fonts.serif, letterSpacing: -0.5, marginTop: 3 },
+  heroSub: { color: 'rgba(0,0,0,0.6)', fontSize: 11, marginTop: 2 },
+  statBox: {
+    flex: 1,
+    backgroundColor: '#0e0e0e',
+    borderColor: '#1c1c1c',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 11,
+    alignItems: 'center',
+    gap: 3,
+  },
+  statValue: { color: CREAM, fontSize: 18, fontFamily: fonts.serif, letterSpacing: -0.4 },
+  statLabel: { color: 'rgba(245,240,232,0.4)', fontSize: 8, fontWeight: '700', letterSpacing: 1.2 },
+  shareCard: {
+    width: Math.min(W - 96, 300),
+    backgroundColor: '#F4EEE2',
+    borderRadius: 14,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.5,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 12,
+  },
+  shareMastRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  shareMast: { color: '#221b12', fontSize: 7, letterSpacing: 1.6, fontWeight: '700' },
+  shareRule: { height: 2, backgroundColor: '#221b12', marginTop: 6 },
+  shareRuleThin: { height: 1, backgroundColor: '#221b12', marginTop: 2, opacity: 0.5 },
+  shareKicker: { color: '#8b5a3c', fontSize: 9, fontWeight: '800', letterSpacing: 2.5 },
+  shareKickerRule: { width: 20, height: 2, backgroundColor: '#8b5a3c', marginTop: 4, marginBottom: 8 },
+  shareTitle: { color: '#221b12', fontSize: 21, fontFamily: fonts.serif, lineHeight: 25, letterSpacing: -0.4 },
+  shareAuthor: { color: 'rgba(34,27,18,0.55)', fontSize: 11, fontFamily: fonts.serifRegular, marginTop: 5 },
+  shareRating: { color: '#221b12', fontSize: 13, fontFamily: fonts.serif, marginTop: 7 },
+  shareRatingSub: { color: 'rgba(34,27,18,0.5)', fontSize: 9 },
+  shareFooter: {
+    color: 'rgba(34,27,18,0.35)', fontSize: 7, letterSpacing: 1.2,
+    textAlign: 'right', marginTop: 16, fontWeight: '600',
   },
 });

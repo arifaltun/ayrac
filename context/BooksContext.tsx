@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { normalizeAuthorName } from '@/utils/authorName';
 
 export type Book = {
   id: string;
@@ -39,6 +40,8 @@ const BOOKS_KEY = '@ayrac_books';
 const SESSIONS_KEY = '@ayrac_sessions';
 // Puan ölçeği v2: 0–10 arası, 0.5 adımlı (eski 5 yıldız ×2 ile taşınır)
 const RATING_V2_KEY = '@ayrac_rating_v2';
+// Yazar adı temizliği: "Tolstoy, Leo, graf, 1828-1910" → "Leo Tolstoy" (tek seferlik)
+const AUTHOR_NORM_KEY = '@ayrac_author_norm_v1';
 
 const BooksContext = createContext<BooksContextValue>({
   books: [],
@@ -56,8 +59,8 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.multiGet([BOOKS_KEY, SESSIONS_KEY, RATING_V2_KEY])
-      .then(([booksEntry, sessionsEntry, ratingV2Entry]) => {
+    AsyncStorage.multiGet([BOOKS_KEY, SESSIONS_KEY, RATING_V2_KEY, AUTHOR_NORM_KEY])
+      .then(([booksEntry, sessionsEntry, ratingV2Entry, authorNormEntry]) => {
         try {
           if (booksEntry[1]) {
             let parsed: Book[] = JSON.parse(booksEntry[1]);
@@ -68,10 +71,17 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
                 rating: Math.min(10, Math.max(0, Math.round((b.rating ?? 0) * 2 * 2) / 2)),
               }));
             }
+            // Eski kayıtlardaki ham katalog yazar adlarını temizle, tek seferlik
+            if (authorNormEntry[1] !== 'true') {
+              parsed = parsed.map((b) => ({ ...b, author: normalizeAuthorName(b.author) }));
+            }
             setBooks(parsed);
           }
           if (ratingV2Entry[1] !== 'true') {
             AsyncStorage.setItem(RATING_V2_KEY, 'true').catch(() => {});
+          }
+          if (authorNormEntry[1] !== 'true') {
+            AsyncStorage.setItem(AUTHOR_NORM_KEY, 'true').catch(() => {});
           }
         } catch {}
         try {
