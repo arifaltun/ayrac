@@ -395,6 +395,12 @@ function QuoteCard({ format, title, author, rating, accentColor, coverImage, rev
           >
             {text}”
           </Text>
+          {/* Alıntı yoksa gösterilen not, kitap alıntısı sanılmasın */}
+          {!quote && !!review && (
+            <Text style={{ color: sub, fontSize: 9, letterSpacing: 1.5, marginTop: 8, fontWeight: '600' }}>
+              — OKUR NOTU
+            </Text>
+          )}
           <View style={{ width: 32, height: 2, backgroundColor: accentColor, marginTop: isStory ? 22 : 12, opacity: 0.85 }} />
           <Text style={{ fontFamily: fonts.serifRegular, color: ink, fontSize: isStory ? 14 : 12, marginTop: 10 }} numberOfLines={1} {...NO_WORD_BREAK}>
             {title}
@@ -436,9 +442,11 @@ function StatsCard({ format, title, author, rating, accentColor, coverImage, dat
   const creamSub = 'rgba(245,240,232,0.55)';
   const creamFaint = 'rgba(245,240,232,0.35)';
 
-  // Yalnızca gerçek veriler blok olur; "—" yok
+  // Yalnızca gerçek veriler blok olur; "—" yok.
+  // Bitirme süresi yalnız gerçek okuma verisi varken gösterilir —
+  // geçmişe dönük "Bitti" eklenen kitapta "1 gün" yanıltıcı olur.
   const blocks: { v: string; l: string }[] = [
-    ...(stats.days > 0 ? [{ v: `${stats.days} gün`, l: 'BİTİRME SÜRESİ' }] : []),
+    ...(stats.days > 0 && stats.totalSeconds > 0 ? [{ v: `${stats.days} gün`, l: 'BİTİRME SÜRESİ' }] : []),
     ...(stats.totalSeconds > 0 ? [{ v: formatDuration(stats.totalSeconds), l: 'TOPLAM OKUMA' }] : []),
     ...(stats.sessionCount > 0 ? [{ v: `${stats.sessionCount}`, l: 'OKUMA OTURUMU' }] : []),
     ...(stats.avgMinutes > 0 ? [{ v: `${stats.avgMinutes} dk`, l: 'GÜNLÜK ORTALAMA' }] : []),
@@ -624,8 +632,9 @@ export default function ShareBookScreen() {
   // Alıntı varyantı: alıntı da not da yoksa kilitli görünür
   const quoteAvailable = !!(book.quote || book.review);
   // İstatistik varyantı: en az 2 gerçek veri yoksa kilitli
+  // (bitirme süresi bloğu gibi burada da days ancak okuma verisiyle sayılır)
   const statsAvailable =
-    [stats.days > 0, stats.totalSeconds > 0, stats.sessionCount > 0, stats.avgMinutes > 0]
+    [stats.days > 0 && stats.totalSeconds > 0, stats.totalSeconds > 0, stats.sessionCount > 0, stats.avgMinutes > 0]
       .filter(Boolean).length >= 2;
 
   const capture = async () => {
