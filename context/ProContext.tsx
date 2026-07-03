@@ -16,7 +16,8 @@ export type PaywallTrigger =
   | 'history'
   | 'recommendations'
   | 'heatmap'
-  | 'review';
+  | 'review'
+  | 'export';
 
 const TRIGGER_COPY: Record<PaywallTrigger, { title: string; subtitle: string }> = {
   book_limit: {
@@ -28,8 +29,8 @@ const TRIGGER_COPY: Record<PaywallTrigger, { title: string; subtitle: string }> 
     subtitle: 'Bitirdiğin kitabı zarif bir kartla paylaşmak Pro’ya özel.',
   },
   wrapped: {
-    title: 'Wrapped Pro’da',
-    subtitle: 'Dönem özetini görmek ve paylaşmak Pro’ya özel.',
+    title: 'Yıllık Wrapped Pro’da',
+    subtitle: 'Yılın tamamının özetini görmek ve paylaşmak Pro’ya özel.',
   },
   history: {
     title: 'Daha eski geçmiş Pro’da',
@@ -46,6 +47,10 @@ const TRIGGER_COPY: Record<PaywallTrigger, { title: string; subtitle: string }> 
   review: {
     title: 'Kitap notları Pro’da',
     subtitle: 'Okuduğun kitaplara not düşmek ve saklamak Pro’ya özel.',
+  },
+  export: {
+    title: 'Dışa aktarma Pro’da',
+    subtitle: 'Okuma günlüğünü PDF ve CSV olarak dışa aktarmak Pro’ya özel.',
   },
 };
 

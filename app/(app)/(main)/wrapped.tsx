@@ -373,6 +373,7 @@ export default function WrappedScreen() {
   const periodLabel = view === 'monthly' ? `${MONTHS_TR[monthIndex]} ${year}` : `${year}`;
 
   const handleExportCSV = async () => {
+    if (!isPro) { showPaywall('export'); return; }
     if (finished.length === 0) return;
     setExporting('csv');
     try {
@@ -401,6 +402,7 @@ export default function WrappedScreen() {
   };
 
   const handleExportPDF = async () => {
+    if (!isPro) { showPaywall('export'); return; }
     if (finished.length === 0) return;
     setExporting('pdf');
     try {
@@ -428,7 +430,11 @@ export default function WrappedScreen() {
           {(['monthly', 'yearly'] as ViewMode[]).map((v) => (
             <Pressable
               key={v}
-              onPress={() => setView(v)}
+              onPress={() => {
+                // "Yıllık Wrapped & paylaşım" Pro özelliği — Free aylıkta kalır
+                if (v === 'yearly' && !isPro) { showPaywall('wrapped'); return; }
+                setView(v);
+              }}
               style={[styles.viewBtn, view === v && { backgroundColor: t.bgSoft }]}
             >
               <Text style={[styles.viewBtnText, { color: view === v ? t.fg : t.muted }]}>
