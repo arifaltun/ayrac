@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, Modal, Linking, Platform,
+  View, Text, StyleSheet, Pressable, Modal,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -50,15 +50,6 @@ export default function ReadingModeScreen() {
     if (!book) router.back();
   }, [book, router]);
 
-  const openSilentSettings = () => {
-    setSilentPromptVisible(false);
-    if (Platform.OS === 'ios') {
-      Linking.openURL('App-Prefs:SOUNDS');
-    } else {
-      Linking.openSettings();
-    }
-  };
-
   const handleFinish = () => {
     if (!book) { router.back(); return; }
     const sessionSeconds = Math.floor((Date.now() - startTimeRef.current) / 1000);
@@ -90,26 +81,19 @@ export default function ReadingModeScreen() {
         <View style={styles.promptBackdrop}>
           <View style={styles.promptCard}>
             <Ionicons name="volume-mute-outline" size={28} color="#F5F0E8" />
-            <Text style={styles.promptTitle}>Telefonunu da sessiz yapmak ister misin?</Text>
-            <Text style={styles.promptDesc}>Okuma sırasında bildirimler seni rahatsız etmesin.</Text>
+            <Text style={styles.promptTitle}>Okumaya dalmadan önce</Text>
+            <Text style={styles.promptDesc}>
+              Bildirimler seni bölmesin — istersen telefonu sessize al ya da Odak modunu aç.
+            </Text>
             <View style={styles.promptButtons}>
               <ScalePressable
                 scale={0.96}
-                style={styles.promptBtnOutline}
-                onPress={() => { Haptics.selectionAsync(); setSilentPromptVisible(false); }}
-                accessibilityLabel="Sessize almadan devam et"
-                accessibilityRole="button"
-              >
-                <Text style={styles.promptBtnOutlineText}>Hayır, kalsın</Text>
-              </ScalePressable>
-              <ScalePressable
-                scale={0.96}
                 style={styles.promptBtnFill}
-                onPress={openSilentSettings}
-                accessibilityLabel="Ses ayarlarına git"
+                onPress={() => { Haptics.selectionAsync(); setSilentPromptVisible(false); }}
+                accessibilityLabel="Okumaya başla"
                 accessibilityRole="button"
               >
-                <Text style={styles.promptBtnFillText}>Ayarlara git</Text>
+                <Text style={styles.promptBtnFillText}>Başla</Text>
               </ScalePressable>
             </View>
           </View>
