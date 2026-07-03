@@ -5,7 +5,7 @@ _Tarih: 4 Temmuz 2026 · Yöntem: tüm akışların kod üzerinden zihinsel yür
 ## Yönetici Özeti
 
 - **Toplam madde: 57** — Kritik: **7** · Orta: **28** · Küçük: **22**
-- **Güncelleme (4 Temmuz 2026):** 7 kritik bulgunun tamamı düzeltildi — aşağıda ✅ ile işaretli.
+- **Güncelleme (4 Temmuz 2026):** 7 kritik bulgunun tamamı ve paylaşım kartı bölümündeki (§7) 10 maddenin tamamı düzeltildi — aşağıda ✅ ile işaretli.
 - **En çok sorun biriken üç alan:**
   1. **Paylaşım kartları & ViewShot çıktısı** (10 madde) — görsel işçilik iyi kurulmuş ama çıktı köşe şeffaflığı, çözünürlük ve uzun metin davranışında pürüzlü.
   2. **Erişilebilirlik** (11 madde) — 44pt altı hedefler yaygın, `mutedStrong` koyu temada 0.18 alfa ile metin için okunmaz düzeyde.
@@ -97,16 +97,16 @@ _Tarih: 4 Temmuz 2026 · Yöntem: tüm akışların kod üzerinden zihinsel yür
 
 ## 7 · Paylaşım Kartları (özel denetim)
 
-- **[Orta]** ViewShot çıktısı · `share-book.tsx:686-690,810` — ViewShot ve kart `borderRadius: 16 + overflow: hidden` ile sarılı; kaydedilen PNG'nin köşeleri **şeffaf** çıkar — Instagram'a yüklenince köşelerde arka plan sırıtır, ekranda görünenle birebir değildir. → Capture sarmalayıcısından radius'u kaldır (yalnız ekrandaki önizlemeye uygula) veya kartı düz köşeli capture et.
-- **[Orta]** Çözünürlük · `share-book.tsx:18-21,686-689` — Çıktı boyutu cihaz ekranına bağlı (`W-48` × pixelRatio); story kartı hiçbir cihazda tam 1080×1920 değil, küçük telefonlarda düşük çözünürlüklü çıkar. → ViewShot `options`'a sabit `width/height` (1080×1920 / 1080×1350) ver.
-- **[Orta]** Küçük ekran · `share-book.tsx:19-20,684-708` — `STORY_H ≈ 581pt` sabit; iPhone SE/mini'de önizleme kartı header/panel/butonlarla üst üste taşar (flex:1 alan yetmez). → Önizlemeyi kullanılabilir yüksekliğe `transform: scale` ile sığdır.
-- **[Orta]** Tipografi · `share-book.tsx:81` — `adjustsFontSizeToFit` + sabit `lineHeight` kombinasyonu Android'de küçülen metnin dikey kırpılmasına yol açan bilinen RN davranışı; başlıklar cihazda güdük çıkabilir. → Android'de `lineHeight`'ı orana bağla veya font küçülünce lineHeight'ı kaldır.
-- **[Orta]** Alıntı kartı · `share-book.tsx:382-391` — 200 karakterlik alıntı story'de ~8 satıra sığmayınca `…` ile kesiliyor ve hemen ardından kapanış tırnağı geliyor ("…”") — kesik alıntı + tırnak işçilik açısından kırık görünüyor. → Alıntıya da `adjustsFontSizeToFit` ver veya karakter sınırını satır kapasitesine göre belirle.
-- **[Orta]** Varyant kilidi · `share-book.tsx:713-728` — Kilitli Alıntı/İstatistik varyantına dokununca yalnız uyarı titreşimi geliyor; neden kilitli ve nasıl açılır hiç söylenmiyor. → Dokununca tek satır ipucu göster ("Alıntı eklersen açılır → Düzenle").
-- **[Küçük]** İstatistik kartı · `share-book.tsx:602-607` — Geçmişe dönük "Bitti" eklenen kitapta `days = max(1, …)` "BİTİRME SÜRESİ: 1 gün" gibi yanlış bir istatistik üretir. → Oturum verisi yoksa bu bloğu gösterme.
-- **[Küçük]** Alıntı kartı · `share-book.tsx:363` — Alıntı yoksa kullanıcının "notu" tırnak içinde kitap alıntısıymış gibi sunuluyor (Editöryel'deki "OKUR NOTU" atfı burada yok). → Not fallback'inde küçük "okur notu" atfı ekle.
-- **[Küçük]** Kaydet · `share-book.tsx:638-640` — Galeri izni reddedilirse buton sessizce hiçbir şey yapmıyor; ayrıca tam kütüphane izni isteniyor, salt-ekleme (`writeOnly`) yeterli. → İzin reddinde uyarı + `requestPermissionsAsync(true)`.
-- **[Küçük]** Düzen · `share-book.tsx:745-751` — "Galeriye kaydedildi" rozeti belirince buton bloğu aşağı zıplıyor (layout shift). → Rozete sabit yükseklik ayır veya toast olarak üstte göster.
+- ✅ **[Orta — düzeltildi]** ViewShot çıktısı · `share-book.tsx:686-690,810` — ViewShot ve kart `borderRadius: 16 + overflow: hidden` ile sarılı; kaydedilen PNG'nin köşeleri **şeffaf** çıkar — Instagram'a yüklenince köşelerde arka plan sırıtır, ekranda görünenle birebir değildir. → Capture sarmalayıcısından radius'u kaldır (yalnız ekrandaki önizlemeye uygula) veya kartı düz köşeli capture et.
+- ✅ **[Orta — düzeltildi]** Çözünürlük · `share-book.tsx:18-21,686-689` — Çıktı boyutu cihaz ekranına bağlı (`W-48` × pixelRatio); story kartı hiçbir cihazda tam 1080×1920 değil, küçük telefonlarda düşük çözünürlüklü çıkar. → ViewShot `options`'a sabit `width/height` (1080×1920 / 1080×1350) ver.
+- ✅ **[Orta — düzeltildi]** Küçük ekran · `share-book.tsx:19-20,684-708` — `STORY_H ≈ 581pt` sabit; iPhone SE/mini'de önizleme kartı header/panel/butonlarla üst üste taşar (flex:1 alan yetmez). → Önizlemeyi kullanılabilir yüksekliğe `transform: scale` ile sığdır.
+- ✅ **[Orta — düzeltildi]** Tipografi · `share-book.tsx:81` — `adjustsFontSizeToFit` + sabit `lineHeight` kombinasyonu Android'de küçülen metnin dikey kırpılmasına yol açan bilinen RN davranışı; başlıklar cihazda güdük çıkabilir. → Android'de `lineHeight`'ı orana bağla veya font küçülünce lineHeight'ı kaldır.
+- ✅ **[Orta — düzeltildi]** Alıntı kartı · `share-book.tsx:382-391` — 200 karakterlik alıntı story'de ~8 satıra sığmayınca `…` ile kesiliyor ve hemen ardından kapanış tırnağı geliyor ("…”") — kesik alıntı + tırnak işçilik açısından kırık görünüyor. → Alıntıya da `adjustsFontSizeToFit` ver veya karakter sınırını satır kapasitesine göre belirle.
+- ✅ **[Orta — düzeltildi]** Varyant kilidi · `share-book.tsx:713-728` — Kilitli Alıntı/İstatistik varyantına dokununca yalnız uyarı titreşimi geliyor; neden kilitli ve nasıl açılır hiç söylenmiyor. → Dokununca tek satır ipucu göster ("Alıntı eklersen açılır → Düzenle").
+- ✅ **[Küçük — düzeltildi]** İstatistik kartı · `share-book.tsx:602-607` — Geçmişe dönük "Bitti" eklenen kitapta `days = max(1, …)` "BİTİRME SÜRESİ: 1 gün" gibi yanlış bir istatistik üretir. → Oturum verisi yoksa bu bloğu gösterme.
+- ✅ **[Küçük — düzeltildi]** Alıntı kartı · `share-book.tsx:363` — Alıntı yoksa kullanıcının "notu" tırnak içinde kitap alıntısıymış gibi sunuluyor (Editöryel'deki "OKUR NOTU" atfı burada yok). → Not fallback'inde küçük "okur notu" atfı ekle.
+- ✅ **[Küçük — düzeltildi]** Kaydet · `share-book.tsx:638-640` — Galeri izni reddedilirse buton sessizce hiçbir şey yapmıyor; ayrıca tam kütüphane izni isteniyor, salt-ekleme (`writeOnly`) yeterli. → İzin reddinde uyarı + `requestPermissionsAsync(true)`.
+- ✅ **[Küçük — düzeltildi]** Düzen · `share-book.tsx:745-751` — "Galeriye kaydedildi" rozeti belirince buton bloğu aşağı zıplıyor (layout shift). → Rozete sabit yükseklik ayır veya toast olarak üstte göster.
 - **[Doğrulama notu]** WYSIWYG: kart içeriği tek `ShareCard` ağacından hem ekrana hem capture'a gidiyor (ayrı render yok) — birebirlik ilkesel olarak sağlanmış; kalan riskler yukarıdaki köşe şeffaflığı ve Android'de `elevation` gölgelerinin ViewShot'ta soluk çıkma ihtimali. Gerçek cihazda 5 varyant × 2 format kaydedilip piksel karşılaştırması yapılmalı.
 
 ## 8 · Free/Pro Geçişleri (kapı bütünlüğü)
