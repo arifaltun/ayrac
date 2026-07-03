@@ -111,6 +111,8 @@ export default function AddBookScreen() {
   const [scanError, setScanError] = useState('');
   const [scanEvents, setScanEvents] = useState<string[]>([]);
   const scannedRef = useRef(false);
+  // Başarısız aramadan sonra aynı ISBN çerçevede kaldıkça API'ye istek yağmasın
+  const scanCooldownRef = useRef<{ isbn: string; until: number } | null>(null);
   const cameraRef = useRef<CameraView>(null);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
@@ -171,30 +173,37 @@ export default function AddBookScreen() {
       }
     }
     scannedRef.current = false;
+    scanCooldownRef.current = null;
     setScannerOpen(true);
   };
 
   const handleBarcode = async ({ type, data }: { type: string; data: string }) => {
     // Handler hep bağlı kalır; tekrar taramayı ref ile engelleriz.
     // (undefined'a çevirip geri bağlamak bazı cihazlarda taramayı kalıcı durduruyor)
-    logScan(`okundu: ${type} → ${data}`);
     if (scannedRef.current) return;
+    // Az önce başarısız olan ISBN hâlâ çerçevedeyse bekleme süresi dolana dek yok say
+    const cooldown = scanCooldownRef.current;
+    if (cooldown && cooldown.isbn === data && Date.now() < cooldown.until) return;
+    logScan(`okundu: ${type} → ${data}`);
     scannedRef.current = true;
     setScanLoading(true);
     try {
       const item = await lookupByISBN(data);
       if (item && item.title) {
         logScan(`bulundu: ${item.title}`);
+        setScanError('');
         selectResult(item);
         setScannerOpen(false);
       } else {
         logScan('Open Library sonucu boş');
         setScanError('Kitap bulunamadı. ISBN: ' + data);
+        scanCooldownRef.current = { isbn: data, until: Date.now() + 3000 };
         scannedRef.current = false;
       }
     } catch {
       logScan('ağ hatası');
       setScanError('Bağlantı hatası, tekrar deneyin.');
+      scanCooldownRef.current = { isbn: data, until: Date.now() + 3000 };
       scannedRef.current = false;
     } finally {
       setScanLoading(false);
