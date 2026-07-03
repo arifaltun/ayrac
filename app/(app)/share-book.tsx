@@ -682,11 +682,16 @@ export default function ShareBookScreen() {
 
       {/* Card preview */}
       <View style={s.previewContainer}>
-        <Animated.View style={cardAnim}>
+        <Animated.View style={[cardAnim, s.previewClip]}>
           <ViewShot
             ref={viewShotRef}
-            options={{ format: 'png', quality: 1 }}
-            style={{ borderRadius: 16, overflow: 'hidden' }}
+            options={{
+              format: 'png',
+              quality: 1,
+              // Çıktı cihazdan bağımsız: Story 1080×1920, Feed 1080×1080
+              width: 1080,
+              height: format === 'story' ? 1920 : 1080,
+            }}
           >
             <ShareCard
               variant={variant}
@@ -806,8 +811,11 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   paletteSwatchActive: { borderWidth: 2, borderColor: '#fff' },
-  // Card shell + ortak tipografi
-  card: { width: CARD_W, borderRadius: 16, overflow: 'hidden' },
+  // Card shell + ortak tipografi.
+  // Kart düz köşeli capture edilir (PNG'de şeffaf köşe kalmasın);
+  // yuvarlak köşe yalnız ekran önizlemesinde (previewClip).
+  card: { width: CARD_W, overflow: 'hidden' },
+  previewClip: { borderRadius: 16, overflow: 'hidden' },
   kicker: { fontSize: 11, fontWeight: '800', letterSpacing: 3.5 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   mastText: { fontSize: 8, letterSpacing: 1.8, fontWeight: '700' },
