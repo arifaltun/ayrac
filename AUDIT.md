@@ -5,6 +5,7 @@ _Tarih: 4 Temmuz 2026 · Yöntem: tüm akışların kod üzerinden zihinsel yür
 ## Yönetici Özeti
 
 - **Toplam madde: 57** — Kritik: **7** · Orta: **28** · Küçük: **22**
+- **Güncelleme (4 Temmuz 2026):** 7 kritik bulgunun tamamı düzeltildi — aşağıda ✅ ile işaretli.
 - **En çok sorun biriken üç alan:**
   1. **Paylaşım kartları & ViewShot çıktısı** (10 madde) — görsel işçilik iyi kurulmuş ama çıktı köşe şeffaflığı, çözünürlük ve uzun metin davranışında pürüzlü.
   2. **Erişilebilirlik** (11 madde) — 44pt altı hedefler yaygın, `mutedStrong` koyu temada 0.18 alfa ile metin için okunmaz düzeyde.
@@ -27,8 +28,8 @@ _Tarih: 4 Temmuz 2026 · Yöntem: tüm akışların kod üzerinden zihinsel yür
 
 ## 2 · Kitap Ekleme — Arama / Barkod / Manuel
 
-- **[Kritik]** Barkod · `app/(app)/add-book.tsx:386-388,518-566` — `scanError` metni sheet'in içinde render ediliyor ama tarayıcı tam ekran overlay üstte olduğu için "Kitap bulunamadı" / "Bağlantı hatası" mesajlarını kullanıcı tarayıcı açıkken **hiç görmüyor**. → Hata metnini tarayıcı overlay'inin içinde (çerçevenin altında) göster.
-- **[Kritik]** Barkod · `app/(app)/add-book.tsx:185-199` — Arama başarısız olunca `scannedRef.current = false` yapılıyor; barkod hâlâ çerçevedeyken saniyede defalarca yeniden taranıp Open Library'ye istek yağdıran görünmez bir döngü oluşuyor. → Başarısızlık sonrası 2-3 sn bekleme (cooldown) veya aynı ISBN'i tekrar sorgulamama koşulu ekle.
+- ✅ **[Kritik — düzeltildi]** Barkod · `app/(app)/add-book.tsx:386-388,518-566` — `scanError` metni sheet'in içinde render ediliyor ama tarayıcı tam ekran overlay üstte olduğu için "Kitap bulunamadı" / "Bağlantı hatası" mesajlarını kullanıcı tarayıcı açıkken **hiç görmüyor**. → Hata metnini tarayıcı overlay'inin içinde (çerçevenin altında) göster.
+- ✅ **[Kritik — düzeltildi]** Barkod · `app/(app)/add-book.tsx:185-199` — Arama başarısız olunca `scannedRef.current = false` yapılıyor; barkod hâlâ çerçevedeyken saniyede defalarca yeniden taranıp Open Library'ye istek yağdıran görünmez bir döngü oluşuyor. → Başarısızlık sonrası 2-3 sn bekleme (cooldown) veya aynı ISBN'i tekrar sorgulamama koşulu ekle.
 - **[Orta]** Barkod · `app/(app)/add-book.tsx:163-175` — Kamera izni kalıcı reddedilmişse (`canAskAgain: false`) kullanıcıya sadece "Kamera izni verilmedi." yazılıyor; `PhotoPickerSheet`'teki gibi "Ayarları aç" yolu yok — çıkmaz sokak. → Ortak `permissionDeniedAlert` yardımcısını burada da kullan.
 - **[Orta]** Barkod · `app/(app)/add-book.tsx:520-528` — Düşük ışık için fener (torch) kontrolü yok; `CameraView`'ın `enableTorch` prop'u desteklerken karanlıkta tarama fiilen imkânsız. → Overlay'e fener aç/kapa butonu ekle.
 - **[Orta]** Barkod · `app/(app)/add-book.tsx:518-567` — Tarayıcı Modal değil zIndex'li overlay (bilinçli, expo#28846); ancak VoiceOver odağı alttaki formda kalabilir. → Overlay açıkken sheet'e `accessibilityElementsHidden` / `importantForAccessibility="no-hide-descendants"` ver.
@@ -46,7 +47,7 @@ _Tarih: 4 Temmuz 2026 · Yöntem: tüm akışların kod üzerinden zihinsel yür
 
 ## 3 · Kitap Düzenleme
 
-- **[Kritik]** Not · `app/(app)/edit-book.tsx:67-74` — 50 karakterin altındaki not kaydedilince **sessizce eski nota geri dönülüyor**; kullanıcı yazdığını kaybettiğini ancak sonra fark eder (boş bırakmak siliyor, kısa yazmak eskiyi koruyor — iki farklı sessiz davranış). → Kaydetmeden önce uyar ("Notun 50 karakterin altında, kaydedilmeyecek") veya kısa notu da kaydet.
+- ✅ **[Kritik — düzeltildi]** Not · `app/(app)/edit-book.tsx:67-74` — 50 karakterin altındaki not kaydedilince **sessizce eski nota geri dönülüyor**; kullanıcı yazdığını kaybettiğini ancak sonra fark eder (boş bırakmak siliyor, kısa yazmak eskiyi koruyor — iki farklı sessiz davranış). → Kaydetmeden önce uyar ("Notun 50 karakterin altında, kaydedilmeyecek") veya kısa notu da kaydet.
 - **[Orta]** Durum · `app/(app)/edit-book.tsx:64` — "Bitti"den "Okunuyor"a geçip kaydetmek puanı (ve `finishedAt`i) uyarısız sıfırlıyor; yanlışlıkla dokunuşta veri kaybı. → Durum değişiminde puan/tarih silinecekse tek satır onay göster.
 - **[Orta]** Navigasyon · `app/(app)/edit-book.tsx:300` — "Okuma modunu başlat" önce `handleSave()` (içinde `router.back()`) sonra `router.push()` çağırıyor; aynı frame'de iki navigasyon — yarış ve çift geçiş animasyonu riski. → `handleSave`'i navigasyonsuz bir `persist()`'e ayır, tek `router.replace` yap.
 - **[Orta]** Sheet · `app/(app)/edit-book.tsx:114` — Backdrop `View`, dokununca kapanmıyor; `add-book`'ta backdrop `Pressable` ve kapatıyor — aynı görünümlü iki sheet farklı davranıyor. → Davranışı eşitle (kirli form onayıyla birlikte).
@@ -57,8 +58,8 @@ _Tarih: 4 Temmuz 2026 · Yöntem: tüm akışların kod üzerinden zihinsel yür
 
 ## 4 · Okuma Modu
 
-- **[Kritik]** Oturum kaybı · `app/(app)/reading-mode.tsx:37,62-75` — Oturum yalnızca bellekte; kullanıcı telefonu bırakıp kitap okurken (tam hedef senaryo!) iOS uygulamayı öldürürse 2 saatlik oturum tamamen kaybolur. → Oturum başlangıcını AsyncStorage'a yaz; açılışta yarım kalan oturumu "kurtarılsın mı?" diye sor.
-- **[Kritik]** Store riski · `app/(app)/reading-mode.tsx:56` — `Linking.openURL('App-Prefs:SOUNDS')` özel (private) URL şeması; App Store incelemesinde red gerekçesidir ve yeni iOS sürümlerinde çalışmayabilir. → iOS'ta yönlendirme metnini "Odak modunu aç" önerisine çevir veya `Linking.openSettings()` kullan.
+- ✅ **[Kritik — düzeltildi]** Oturum kaybı · `app/(app)/reading-mode.tsx:37,62-75` — Oturum yalnızca bellekte; kullanıcı telefonu bırakıp kitap okurken (tam hedef senaryo!) iOS uygulamayı öldürürse 2 saatlik oturum tamamen kaybolur. → Oturum başlangıcını AsyncStorage'a yaz; açılışta yarım kalan oturumu "kurtarılsın mı?" diye sor.
+- ✅ **[Kritik — düzeltildi]** Store riski · `app/(app)/reading-mode.tsx:56` — `Linking.openURL('App-Prefs:SOUNDS')` özel (private) URL şeması; App Store incelemesinde red gerekçesidir ve yeni iOS sürümlerinde çalışmayabilir. → iOS'ta yönlendirme metnini "Odak modunu aç" önerisine çevir veya `Linking.openSettings()` kullan.
 - **[Orta]** Sessiz önerisi · `app/(app)/reading-mode.tsx:39` — "Telefonunu sessize al" popup'ı her oturumda yeniden çıkıyor; "Hayır, kalsın" diyen kullanıcıya her gün aynı soru = sürtünme. → Tercihi bir kez sorup AsyncStorage'da hatırla.
 - **[Orta]** Çıkış · `app/(app)/reading-mode.tsx:119-156` — Tek çıkış yolu "Kaydet ve çık"; yanlışlıkla açılan oturumu kaydetmeden atma seçeneği yok. → Onay diyaloğuna üçüncü, sessiz "Kaydetmeden çık" bağlantısı ekle.
 - **[Orta]** Android geri · `app/(app)/(main)` yığını — Donanım geri tuşu fullScreenModal'ı onaysız kapatır, süre kaydedilmez. → `usePreventRemove`/`beforeRemove` ile onay diyaloğuna bağla.
@@ -83,8 +84,8 @@ _Tarih: 4 Temmuz 2026 · Yöntem: tüm akışların kod üzerinden zihinsel yür
 
 ## 6 · Özet (Wrapped)
 
-- **[Kritik]** Pro sızıntısı · `wrapped.tsx:510-527` — "Okunan kitaplar" satırına dokunmak doğrudan `share-book`'a gidiyor; `edit-book`'ta paywall'la korunan BİTİRDİM kartına Free kullanıcı buradan serbestçe ulaşıyor. → Satır basışında `isPro` kontrolü + `showPaywall('bitirdim_card')`.
-- **[Kritik]** Pro sızıntısı · `wrapped.tsx:375-415,613-645` + `ProContext.tsx:30-33,58` — "Yıllık Wrapped & paylaşım" ve "PDF & CSV dışa aktarma" Pro özellik listesinde satılıyor ama Wrapped ekranı ve dışa aktarma butonları tamamen kapısız; `wrapped` paywall trigger'ı kodda hiç kullanılmıyor. → Ürün kararını netleştir: ya kapıları ekle ya Pro listesinden çıkar.
+- ✅ **[Kritik — düzeltildi]** Pro sızıntısı · `wrapped.tsx:510-527` — "Okunan kitaplar" satırına dokunmak doğrudan `share-book`'a gidiyor; `edit-book`'ta paywall'la korunan BİTİRDİM kartına Free kullanıcı buradan serbestçe ulaşıyor. → Satır basışında `isPro` kontrolü + `showPaywall('bitirdim_card')`.
+- ✅ **[Kritik — düzeltildi]** Pro sızıntısı · `wrapped.tsx:375-415,613-645` + `ProContext.tsx:30-33,58` — "Yıllık Wrapped & paylaşım" ve "PDF & CSV dışa aktarma" Pro özellik listesinde satılıyor ama Wrapped ekranı ve dışa aktarma butonları tamamen kapısız; `wrapped` paywall trigger'ı kodda hiç kullanılmıyor. → Çözüm: yıllık görünüm `wrapped` tetiğine, PDF/CSV yeni `export` tetiğine bağlandı; aylık özet Free'de kaldı.
 - **[Orta]** Isı haritası · `wrapped.tsx:149` — 52 haftalık yatay grid en solda (bir yıl öncesinde) açılıyor; kullanıcının görmek istediği bugünkü uç görünmüyor. → Mount'ta `scrollToEnd`.
 - **[Orta]** Isı haritası · `wrapped.tsx:50-124` — Her render'da 364 hücre + tarih hesabı yeniden kuruluyor, memo yok; Free'de kilitli önizleme bile tam grid'i render ediyor. → Grid'i `useMemo` + `React.memo`; kilitli önizleme için statik placeholder.
 - **[Orta]** Dışa aktarma · `wrapped.tsx:396-400,410-414` — CSV/PDF hatası `console.warn`'a gidiyor; spinner durur, kullanıcı hiçbir şey öğrenmez. → Kısa hata bildirimi (alert/inline).
