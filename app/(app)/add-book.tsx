@@ -544,6 +544,13 @@ export default function AddBookScreen() {
               <Text style={styles.scannerLoadingText}>Kitap aranıyor…</Text>
             </View>
           )}
+          {/* Hata banner'ı overlay'in İÇİNDE — sheet'teki metin kameranın altında kalıyor */}
+          {!!scanError && !scanLoading && (
+            <View style={[styles.scannerErrorBanner, { bottom: insets.bottom + 92 }]}>
+              <Ionicons name="alert-circle" size={15} color="#FFB199" />
+              <Text style={styles.scannerErrorText}>{scanError}</Text>
+            </View>
+          )}
           <Pressable
             style={[styles.scannerClose, { top: insets.top + 12 }]}
             onPress={() => setScannerOpen(false)}
@@ -663,6 +670,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12, borderRadius: 24, minHeight: 44,
   },
   scannerFallbackText: { color: '#F5F0E8', fontSize: 13, fontWeight: '600' },
+  scannerErrorBanner: {
+    position: 'absolute', left: 24, right: 24,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.75)', borderWidth: 1, borderColor: 'rgba(216,94,49,0.55)',
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
+  },
+  scannerErrorText: { color: '#FFB199', fontSize: 13, fontWeight: '600', flexShrink: 1, textAlign: 'center' },
   scanDebug: {
     position: 'absolute', left: 16,
     backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: 8,
