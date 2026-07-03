@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Pressable, Dimensions,
-  ActivityIndicator, Image, ScrollView, Platform,
+  ActivityIndicator, Image, ScrollView, Platform, Alert, Linking,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -583,7 +583,20 @@ export default function ShareBookScreen() {
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [previewArea, setPreviewArea] = useState({ w: 0, h: 0 });
+  // Kilitli varyanta dokununca nedenini söyleyen geçici ipucu (durum satırında)
+  const [statusHint, setStatusHint] = useState<string | null>(null);
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const viewShotRef = useRef<ViewShot>(null);
+
+  const showHint = (msg: string) => {
+    setStatusHint(msg);
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    hintTimerRef.current = setTimeout(() => setStatusHint(null), 3000);
+  };
+
+  useEffect(() => () => {
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+  }, []);
 
   const sv = useSharedValue(0.88);
   const cardAnim = useAnimatedStyle(() => ({ transform: [{ scale: sv.value }] }));
@@ -658,8 +671,19 @@ export default function ShareBookScreen() {
   const handleSaveToGallery = async () => {
     setLoading(true);
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') return;
+      // Salt-ekleme izni yeterli — tam galeri erişimi istemeye gerek yok
+      const { status } = await MediaLibrary.requestPermissionsAsync(true);
+      if (status !== 'granted') {
+        Alert.alert(
+          'İzin gerekiyor',
+          'Kartı kaydetmek için Ayarlar’dan ayraç’a fotoğraf ekleme izni vermen gerekiyor.',
+          [
+            { text: 'Vazgeç', style: 'cancel' },
+            { text: 'Ayarları aç', onPress: () => Linking.openSettings() },
+          ],
+        );
+        return;
+      }
       const uri = await capture();
       if (!uri) return;
       await MediaLibrary.saveToLibraryAsync(uri);
@@ -751,7 +775,13 @@ export default function ShareBookScreen() {
               <Pressable
                 key={key}
                 onPress={() => {
-                  if (locked) { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning); return; }
+                  if (locked) {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                    showHint(key === 'quote'
+                      ? 'Alıntı ya da not eklersen açılır — kitabı düzenle'
+                      : 'Okuma modunda süre biriktikçe açılır');
+                    return;
+                  }
                   animateChange(() => setVariant(key));
                 }}
                 style={[s.styleBtn, variant === key && s.styleBtnActive, locked && { opacity: 0.35 }]}
@@ -780,12 +810,14 @@ export default function ShareBookScreen() {
       <View style={s.actions}>
         {/* Sabit yükseklikli durum satırı — rozet belirince butonlar zıplamaz */}
         <View style={s.statusSlot}>
-          {saved && (
+          {saved ? (
             <View style={s.savedBadge}>
               <Ionicons name="checkmark-circle" size={14} color="#4ecb91" />
               <Text style={s.savedText}>Galeriye kaydedildi</Text>
             </View>
-          )}
+          ) : statusHint ? (
+            <Text style={s.hintText}>{statusHint}</Text>
+          ) : null}
         </View>
         <Pressable
           style={[s.actionBtn, s.actionBtnPrimary]}
@@ -857,6 +889,7 @@ const s = StyleSheet.create({
   statusSlot: { height: 22, alignItems: 'center', justifyContent: 'center' },
   savedBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   savedText: { color: '#4ecb91', fontSize: 13, fontWeight: '600' },
+  hintText: { color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: '500' },
   actionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 14 },
   actionBtnPrimary: { backgroundColor: '#F5F0E8' },
   actionBtnPrimaryText: { color: '#000', fontSize: 15, fontWeight: '700' },
