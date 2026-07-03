@@ -568,6 +568,7 @@ export default function ShareBookScreen() {
   const [accentColor, setAccentColor] = useState(book?.color ?? PALETTE[0]);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [previewArea, setPreviewArea] = useState({ w: 0, h: 0 });
   const viewShotRef = useRef<ViewShot>(null);
 
   const sv = useSharedValue(0.88);
@@ -591,6 +592,13 @@ export default function ShareBookScreen() {
   }, [book, router]);
 
   if (!book) return null;
+
+  // Küçük ekranlarda (SE/mini) kart, önizleme alanına orantılı küçültülür;
+  // capture ölçekten etkilenmez çünkü transform ata görünümde kalır.
+  const cardH = format === 'story' ? STORY_H : FEED_H;
+  const fitScale = previewArea.h > 0
+    ? Math.min(1, previewArea.h / cardH, previewArea.w / CARD_W)
+    : 1;
 
   const dateLabel = new Date(book.finishedAt ?? book.createdAt).toLocaleDateString('tr-TR', {
     day: 'numeric', month: 'long', year: 'numeric',
@@ -681,7 +689,12 @@ export default function ShareBookScreen() {
       </View>
 
       {/* Card preview */}
-      <View style={s.previewContainer}>
+      <View
+        style={s.previewContainer}
+        onLayout={(e) => setPreviewArea({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+      >
+        <View style={{ width: CARD_W * fitScale, height: cardH * fitScale, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ transform: [{ scale: fitScale }] }}>
         <Animated.View style={[cardAnim, s.previewClip]}>
           <ViewShot
             ref={viewShotRef}
@@ -710,6 +723,8 @@ export default function ShareBookScreen() {
             />
           </ViewShot>
         </Animated.View>
+        </View>
+        </View>
       </View>
 
       {/* Customization */}
@@ -748,12 +763,15 @@ export default function ShareBookScreen() {
 
       {/* Actions */}
       <View style={s.actions}>
-        {saved && (
-          <View style={s.savedBadge}>
-            <Ionicons name="checkmark-circle" size={14} color="#4ecb91" />
-            <Text style={s.savedText}>Galeriye kaydedildi</Text>
-          </View>
-        )}
+        {/* Sabit yükseklikli durum satırı — rozet belirince butonlar zıplamaz */}
+        <View style={s.statusSlot}>
+          {saved && (
+            <View style={s.savedBadge}>
+              <Ionicons name="checkmark-circle" size={14} color="#4ecb91" />
+              <Text style={s.savedText}>Galeriye kaydedildi</Text>
+            </View>
+          )}
+        </View>
         <Pressable
           style={[s.actionBtn, s.actionBtnPrimary]}
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); handleShare(); }}
@@ -821,7 +839,8 @@ const s = StyleSheet.create({
   mastText: { fontSize: 8, letterSpacing: 1.8, fontWeight: '700' },
   // Actions
   actions: { gap: 8, marginTop: 8 },
-  savedBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 4 },
+  statusSlot: { height: 22, alignItems: 'center', justifyContent: 'center' },
+  savedBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   savedText: { color: '#4ecb91', fontSize: 13, fontWeight: '600' },
   actionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 14 },
   actionBtnPrimary: { backgroundColor: '#F5F0E8' },
