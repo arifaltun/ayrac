@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Pressable, Dimensions,
-  ActivityIndicator, Image, ScrollView,
+  ActivityIndicator, Image, ScrollView, Platform,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -80,6 +80,10 @@ function Rating({ value, color, subColor, size = 16 }: {
 // Kelime ortasından kırılma yasak: sığmayan başlık kademeli küçülür
 const NO_WORD_BREAK = { adjustsFontSizeToFit: true, minimumFontScale: 0.55 } as const;
 
+// Android'de adjustsFontSizeToFit + sabit lineHeight, küçülen metni dikey kırpıyor
+// (bilinen RN davranışı) — Android'de satır yüksekliği serbest bırakılır
+const fitLineHeight = (lh: number) => (Platform.OS === 'android' ? undefined : lh);
+
 // İnce grain dokusu (SVG pattern) — düz dijital zemini kırar
 function Grain({ color, opacity, id }: { color: string; opacity: number; id: string }) {
   return (
@@ -132,7 +136,7 @@ function CoverArt({ title, accentColor, coverImage, w, lightShadow }: {
                 textAlign: 'center',
                 fontFamily: fonts.serifMedium,
                 fontSize: Math.max(9, Math.round(w * 0.15)),
-                lineHeight: Math.max(11, Math.round(w * 0.19)),
+                lineHeight: fitLineHeight(Math.max(11, Math.round(w * 0.19))),
                 color: 'rgba(255,255,255,0.92)',
                 letterSpacing: 0.4,
               }}
@@ -217,7 +221,7 @@ function EditorialCard({ format, title, author, rating, accentColor, coverImage,
               <Text style={[s.kicker, { color: accentColor }]}>BİTİRDİM</Text>
               <View style={{ width: 26, height: 2, backgroundColor: accentColor, marginTop: 5, marginBottom: 12 }} />
               <Text
-                style={{ fontFamily: fonts.serif, color: ink, fontSize: isStory ? 30 : 20, lineHeight: isStory ? 36 : 25, letterSpacing: -0.5 }}
+                style={{ fontFamily: fonts.serif, color: ink, fontSize: isStory ? 30 : 20, lineHeight: fitLineHeight(isStory ? 36 : 25), letterSpacing: -0.5 }}
                 numberOfLines={isStory ? 4 : 2}
                 {...NO_WORD_BREAK}
               >
@@ -310,7 +314,7 @@ function JournalCard({ format, title, author, rating, accentColor, coverImage, d
           <View style={{ flexDirection: 'row', gap: 16, alignItems: 'flex-start' }}>
             <View style={{ flex: 1 }}>
               <Text
-                style={{ fontFamily: fonts.serif, color: ink, fontSize: isStory ? 24 : 17, lineHeight: isStory ? 30 : 21, letterSpacing: -0.4 }}
+                style={{ fontFamily: fonts.serif, color: ink, fontSize: isStory ? 24 : 17, lineHeight: fitLineHeight(isStory ? 30 : 21), letterSpacing: -0.4 }}
                 numberOfLines={isStory ? 3 : 2}
                 {...NO_WORD_BREAK}
               >
@@ -379,13 +383,15 @@ function QuoteCard({ format, title, author, rating, accentColor, coverImage, rev
           }}>
             “
           </Text>
+          {/* Uzun alıntı ortadan kesilip "…”" kalmasın: satıra sığmazsa kademeli küçülür */}
           <Text
             style={{
               fontFamily: fonts.serif, color: ink,
-              fontSize: isStory ? 24 : 16, lineHeight: isStory ? 36 : 24,
+              fontSize: isStory ? 24 : 16, lineHeight: fitLineHeight(isStory ? 36 : 24),
               letterSpacing: -0.2,
             }}
             numberOfLines={isStory ? 8 : 4}
+            {...NO_WORD_BREAK}
           >
             {text}”
           </Text>
@@ -453,7 +459,7 @@ function StatsCard({ format, title, author, rating, accentColor, coverImage, dat
           <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
               <Text
-                style={{ fontFamily: fonts.serif, color: cream, fontSize: isStory ? 26 : 18, lineHeight: isStory ? 32 : 23, letterSpacing: -0.5 }}
+                style={{ fontFamily: fonts.serif, color: cream, fontSize: isStory ? 26 : 18, lineHeight: fitLineHeight(isStory ? 32 : 23), letterSpacing: -0.5 }}
                 numberOfLines={isStory ? 3 : 2}
                 {...NO_WORD_BREAK}
               >
@@ -512,7 +518,7 @@ function MinimalCard({ format, title, author, rating, accentColor, coverImage, d
         <Text
           style={{
             fontFamily: fonts.serif, color: cream, textAlign: 'center',
-            fontSize: isStory ? 26 : 18, lineHeight: isStory ? 33 : 23,
+            fontSize: isStory ? 26 : 18, lineHeight: fitLineHeight(isStory ? 33 : 23),
             letterSpacing: -0.5, marginTop: 10, maxWidth: '88%',
           }}
           numberOfLines={2}
