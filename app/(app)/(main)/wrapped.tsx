@@ -511,7 +511,11 @@ export default function WrappedScreen() {
                   <Pressable
                     key={b.id}
                     style={styles.bookItem}
-                    onPress={() => router.push({ pathname: '/share-book' as any, params: { id: b.id } })}
+                    onPress={() => {
+                      // BİTİRDİM kartı Pro'ya özel — edit-book'taki kapıyla aynı tetik
+                      if (!isPro) { showPaywall('bitirdim_card'); return; }
+                      router.push({ pathname: '/share-book' as any, params: { id: b.id } });
+                    }}
                   >
                     <BookCover color={b.color} coverImage={b.coverImage} title={b.title} size={34} radius={2} />
                     <View style={{ flex: 1, minWidth: 0 }}>
