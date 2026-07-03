@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useBooks, Book } from '@/context/BooksContext';
 import { fonts } from '@/constants/tokens';
 import { ScalePressable } from '@/components/ScalePressable';
+import { saveActiveSession, clearActiveSession } from '@/utils/activeSession';
 
 function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -39,19 +40,29 @@ export default function ReadingModeScreen() {
   const [silentPromptVisible, setSilentPromptVisible] = useState(true);
   const [finishConfirmVisible, setFinishConfirmVisible] = useState(false);
 
+  // Oturum kalıcı ize yazılır: uygulama arka planda öldürülürse
+  // kütüphane ekranı bir sonraki açılışta bu kayıttan kurtarma önerir.
   useEffect(() => {
+    const bookId = String(id ?? '');
+    saveActiveSession({ bookId, startedAt: startTimeRef.current, lastTick: Date.now() });
+    let lastPersist = Date.now();
     const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+      const now = Date.now();
+      setElapsed(Math.floor((now - startTimeRef.current) / 1000));
+      if (now - lastPersist >= 15000) {
+        lastPersist = now;
+        saveActiveSession({ bookId, startedAt: startTimeRef.current, lastTick: now });
+      }
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [id]);
 
   useEffect(() => {
     if (!book) router.back();
   }, [book, router]);
 
   const handleFinish = () => {
-    if (!book) { router.back(); return; }
+    if (!book) { clearActiveSession(); router.back(); return; }
     const sessionSeconds = Math.floor((Date.now() - startTimeRef.current) / 1000);
     if (sessionSeconds > 0) {
       addSession({ bookId: book.id, duration: sessionSeconds, date: Date.now() });
@@ -61,6 +72,7 @@ export default function ReadingModeScreen() {
       readingTime: (book.readingTime ?? 0) + sessionSeconds,
     };
     updateBook(updated);
+    clearActiveSession();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
   };

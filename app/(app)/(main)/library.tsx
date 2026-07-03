@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, ScrollView, Pressable, StyleSheet, Image,
+  View, Text, ScrollView, Pressable, StyleSheet, Image, Alert,
   Modal, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, DevSettings,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +22,7 @@ import {
   cancelReminder, requestNotificationPermission, computeStreak, ReminderSettings,
 } from '@/utils/notifications';
 import { normalizeAuthorName } from '@/utils/authorName';
+import { loadActiveSession, clearActiveSession } from '@/utils/activeSession';
 
 const MONTHS_TR = [
   'Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
@@ -349,7 +350,7 @@ type ViewMode = 'monthly' | 'yearly';
 
 export default function LibraryScreen() {
   const { t, isDark, toggle } = useTheme();
-  const { books, sessions, addBook, resetAll } = useBooks();
+  const { books, sessions, addBook, updateBook, addSession, resetAll } = useBooks();
   const { yearlyGoal, monthlyGoal, setYearlyGoal, setMonthlyGoal } = useGoal();
   const { isPro, showPaywall, toggleProForDev } = usePro();
   const insets = useSafeAreaInsets();
@@ -375,6 +376,38 @@ export default function LibraryScreen() {
   useEffect(() => {
     AsyncStorage.getItem('@ayrac_user_name').then(setUserName);
   }, []);
+
+  // Uygulama okuma modundayken öldürüldüyse yarım kalan oturumu kurtar.
+  // Kitaplar yüklendikten sonra bir kez çalışır; okuma modu açıkken çalışmaz
+  // çünkü iz ancak okuma modu açılınca yazılır, bu kontrol ondan öncedir.
+  const sessionRecoveryRef = useRef(false);
+  useEffect(() => {
+    if (sessionRecoveryRef.current || books.length === 0) return;
+    sessionRecoveryRef.current = true;
+    loadActiveSession().then((active) => {
+      if (!active) return;
+      const book = books.find((b) => b.id === active.bookId);
+      const duration = Math.floor((active.lastTick - active.startedAt) / 1000);
+      // Kitap silinmiş ya da oturum 1 dk'dan kısaysa sessizce temizle
+      if (!book || duration < 60) { clearActiveSession(); return; }
+      const minutes = Math.max(1, Math.round(duration / 60));
+      Alert.alert(
+        'Yarım kalan okuma oturumu',
+        `"${book.title}" için kaydedilmemiş ${minutes} dakikalık okuma bulundu. Süreye eklensin mi?`,
+        [
+          { text: 'Sil', style: 'destructive', onPress: () => { clearActiveSession(); } },
+          {
+            text: 'Kaydet',
+            onPress: () => {
+              addSession({ bookId: book.id, duration, date: active.lastTick });
+              updateBook({ ...book, readingTime: (book.readingTime ?? 0) + duration });
+              clearActiveSession();
+            },
+          },
+        ],
+      );
+    });
+  }, [books, addSession, updateBook]);
 
   const reading = books.filter((b) => b.status === 'reading');
   const want = books.filter((b) => b.status === 'want');
