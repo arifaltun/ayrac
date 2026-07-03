@@ -64,14 +64,8 @@ export default function EditBookScreen() {
       rating: status === 'finished' ? rating : 0,
       color,
       coverImage,
-      review:
-        status === 'finished'
-          ? review.trim().length === 0
-            ? undefined
-            : review.trim().length >= 50
-            ? review.trim()
-            : book.review
-          : book.review,
+      // Kullanıcının yazdığı asla sessizce kaybolmaz: boş → silinir, doluysa aynen kaydedilir
+      review: status === 'finished' ? (review.trim() || undefined) : book.review,
       quote: quote.trim() ? quote.trim().slice(0, 200) : undefined,
     };
     updateBook(updated);
@@ -258,16 +252,7 @@ export default function EditBookScreen() {
             <View style={styles.field}>
               <View style={styles.reviewLabelRow}>
                 <Text style={[styles.fieldLabel, { color: t.muted }]}>NOTUN</Text>
-                <Text style={[
-                  styles.charCount,
-                  {
-                    color: review.length > 260
-                      ? t.orange
-                      : review.length > 0 && review.length < 50
-                      ? t.warning
-                      : t.muted,
-                  },
-                ]}>
+                <Text style={[styles.charCount, { color: review.length > 260 ? t.orange : t.muted }]}>
                   {review.length}/280
                 </Text>
               </View>
@@ -281,12 +266,7 @@ export default function EditBookScreen() {
                 numberOfLines={4}
                 textAlignVertical="top"
               />
-              {review.length > 0 && review.length < 50 && (
-                <Text style={[styles.reviewHint, { color: t.orange }]}>
-                  En az 50 karakter gerekiyor ({50 - review.length} kaldı)
-                </Text>
-              )}
-              {review.length >= 50 && (
+              {review.trim().length > 0 && (
                 <Text style={[styles.reviewHint, { color: t.accent }]}>
                   Notun paylaşım kartında görünecek
                 </Text>

@@ -411,7 +411,7 @@ export default function LibraryScreen() {
 
   const reading = books.filter((b) => b.status === 'reading');
   const want = books.filter((b) => b.status === 'want');
-  const reviewed = books.filter((b) => b.status === 'finished' && b.review && b.review.length >= 50);
+  const reviewed = books.filter((b) => b.status === 'finished' && !!b.review);
 
   const finishedInPeriod = books.filter((b) => {
     if (b.status !== 'finished') return false;
