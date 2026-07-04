@@ -53,7 +53,9 @@ export default function EditBookScreen() {
 
   if (!book) return null;
 
-  const handleSave = () => {
+  // Kaydetme navigasyondan ayrı: "Okuma modunu başlat" da aynı yoldan geçer,
+  // aynı frame'de back+push yarışı oluşmaz.
+  const persist = () => {
     const updated: Book = {
       ...book,
       title: title.trim(),
@@ -69,7 +71,53 @@ export default function EditBookScreen() {
       quote: quote.trim() ? quote.trim().slice(0, 200) : undefined,
     };
     updateBook(updated);
-    router.back();
+  };
+
+  // "Bitti"den çıkış puanı ve bitirme tarihini siler — sessizce değil, sorarak
+  const confirmAndPersist = (onDone: () => void) => {
+    const losesRating =
+      book.status === 'finished' && status !== 'finished' && (book.rating > 0 || !!book.finishedAt);
+    if (losesRating) {
+      Alert.alert(
+        'Durum değişiyor',
+        '"Bitti"den çıkınca puanın ve bitirme tarihi silinecek.',
+        [
+          { text: 'Vazgeç', style: 'cancel' },
+          { text: 'Devam et', style: 'destructive', onPress: () => { persist(); onDone(); } },
+        ],
+      );
+      return;
+    }
+    persist();
+    onDone();
+  };
+
+  const handleSave = () => {
+    confirmAndPersist(() => { closingRef.current = true; router.back(); });
+  };
+
+  const isDirty =
+    title.trim() !== book.title ||
+    author.trim() !== book.author ||
+    (parseInt(pages) || 0) !== book.pages ||
+    genre.trim() !== book.genre ||
+    status !== book.status ||
+    rating !== (book.rating ?? 0) ||
+    color !== book.color ||
+    coverImage !== book.coverImage ||
+    review.trim() !== (book.review ?? '') ||
+    quote.trim() !== (book.quote ?? '');
+
+  const handleClose = () => {
+    if (!isDirty) { router.back(); return; }
+    Alert.alert(
+      'Değişiklikler kaydedilmedi',
+      'Kapatırsan yaptığın değişiklikler silinecek.',
+      [
+        { text: 'Düzenlemeye dön', style: 'cancel' },
+        { text: 'Kaydetmeden kapat', style: 'destructive', onPress: () => router.back() },
+      ],
+    );
   };
 
   const handleDelete = () => {
@@ -105,7 +153,8 @@ export default function EditBookScreen() {
         onRemove={() => setCoverImage(undefined)}
       />
 
-      <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
+      {/* Backdrop dokunuşu add-book ile aynı davranır: kirli formda önce sorar */}
+      <Pressable style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.35)' }]} onPress={handleClose} />
       <View
         style={[
           styles.sheet,
@@ -119,8 +168,9 @@ export default function EditBookScreen() {
             Kitabı düzenle
           </Text>
           <Pressable
-            onPress={() => router.back()}
+            onPress={handleClose}
             style={[styles.closeBtn, { backgroundColor: t.bgSoft }]}
+            hitSlop={8}
             accessibilityLabel="Kapat"
             accessibilityRole="button"
           >
@@ -281,8 +331,16 @@ export default function EditBookScreen() {
 
           {status === 'reading' && (
             <Pressable
+              // Bilinçli token dışı yüzey: okuma modu her temada koyudur, buton ona açılan kapı
               style={[styles.readingModeBtn, { backgroundColor: '#000', borderColor: '#333' }]}
-              onPress={() => { handleSave(); router.push({ pathname: '/reading-mode' as any, params: { id: book.id } }); }}
+              onPress={() => {
+                confirmAndPersist(() => {
+                  closingRef.current = true;
+                  router.replace({ pathname: '/reading-mode' as any, params: { id: book.id } });
+                });
+              }}
+              accessibilityLabel="Okuma modunu başlat"
+              accessibilityRole="button"
             >
               <Ionicons name="time-outline" size={15} color="#F5F0E8" />
               <Text style={[styles.readingModeTxt, { color: '#F5F0E8' }]}>Okuma modunu başlat</Text>

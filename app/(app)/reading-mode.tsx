@@ -4,8 +4,9 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBooks, Book } from '@/context/BooksContext';
 import { fonts } from '@/constants/tokens';
 import { ScalePressable } from '@/components/ScalePressable';
@@ -27,8 +28,14 @@ function formatTotalTime(seconds: number): string {
   return `${seconds} sn`;
 }
 
+// Öneri her oturumda tekrarlanmasın — bir kez göster, tercihi hatırla
+const SILENT_PROMPT_KEY = '@ayrac_silent_prompt_seen';
+// Kazara açılan oturumlar seri/ısı haritasını şişirmesin
+const MIN_SESSION_SECONDS = 60;
+
 export default function ReadingModeScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { books, updateBook, addSession } = useBooks();
@@ -37,8 +44,30 @@ export default function ReadingModeScreen() {
 
   const startTimeRef = useRef<number>(Date.now());
   const [elapsed, setElapsed] = useState(0);
-  const [silentPromptVisible, setSilentPromptVisible] = useState(true);
+  const [silentPromptVisible, setSilentPromptVisible] = useState(false);
   const [finishConfirmVisible, setFinishConfirmVisible] = useState(false);
+  const allowExitRef = useRef(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(SILENT_PROMPT_KEY).then((v) => {
+      if (v !== 'true') setSilentPromptVisible(true);
+    });
+  }, []);
+
+  const dismissSilentPrompt = () => {
+    setSilentPromptVisible(false);
+    AsyncStorage.setItem(SILENT_PROMPT_KEY, 'true').catch(() => {});
+  };
+
+  // Android geri tuşu (ve her türlü dışarıdan kapanış) onaysız süre kaybetmesin
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e: any) => {
+      if (allowExitRef.current) return;
+      e.preventDefault();
+      setFinishConfirmVisible(true);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   // Oturum kalıcı ize yazılır: uygulama arka planda öldürülürse
   // kütüphane ekranı bir sonraki açılışta bu kayıttan kurtarma önerir.
@@ -58,22 +87,33 @@ export default function ReadingModeScreen() {
   }, [id]);
 
   useEffect(() => {
-    if (!book) router.back();
+    if (!book) {
+      allowExitRef.current = true;
+      router.back();
+    }
   }, [book, router]);
 
   const handleFinish = () => {
+    allowExitRef.current = true;
     if (!book) { clearActiveSession(); router.back(); return; }
     const sessionSeconds = Math.floor((Date.now() - startTimeRef.current) / 1000);
-    if (sessionSeconds > 0) {
+    if (sessionSeconds >= MIN_SESSION_SECONDS) {
       addSession({ bookId: book.id, duration: sessionSeconds, date: Date.now() });
+      const updated: Book = {
+        ...book,
+        readingTime: (book.readingTime ?? 0) + sessionSeconds,
+      };
+      updateBook(updated);
     }
-    const updated: Book = {
-      ...book,
-      readingTime: (book.readingTime ?? 0) + sessionSeconds,
-    };
-    updateBook(updated);
     clearActiveSession();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    router.back();
+  };
+
+  // Yanlışlıkla açılan oturum için sessiz çıkış — hiçbir şey kaydedilmez
+  const handleDiscard = () => {
+    allowExitRef.current = true;
+    clearActiveSession();
     router.back();
   };
 
@@ -88,7 +128,7 @@ export default function ReadingModeScreen() {
         visible={silentPromptVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setSilentPromptVisible(false)}
+        onRequestClose={dismissSilentPrompt}
       >
         <View style={styles.promptBackdrop}>
           <View style={styles.promptCard}>
@@ -101,7 +141,7 @@ export default function ReadingModeScreen() {
               <ScalePressable
                 scale={0.96}
                 style={styles.promptBtnFill}
-                onPress={() => { Haptics.selectionAsync(); setSilentPromptVisible(false); }}
+                onPress={() => { Haptics.selectionAsync(); dismissSilentPrompt(); }}
                 accessibilityLabel="Okumaya başla"
                 accessibilityRole="button"
               >
@@ -126,6 +166,7 @@ export default function ReadingModeScreen() {
             <Text style={styles.promptDesc}>
               Bu oturum: {formatTotalTime(elapsed)}{'\n'}
               Toplam: {formatTotalTime(totalAfter)}
+              {elapsed < MIN_SESSION_SECONDS ? '\n1 dakikadan kısa oturumlar kaydedilmez.' : ''}
             </Text>
             <View style={styles.promptButtons}>
               <ScalePressable
@@ -147,6 +188,15 @@ export default function ReadingModeScreen() {
                 <Text style={styles.promptBtnFillText}>Kaydet ve çık</Text>
               </ScalePressable>
             </View>
+            {/* Yanlışlıkla açılan oturumu süre kaydetmeden atma yolu */}
+            <Pressable
+              style={styles.discardLink}
+              onPress={handleDiscard}
+              accessibilityLabel="Kaydetmeden çık"
+              accessibilityRole="button"
+            >
+              <Text style={styles.discardLinkText}>Kaydetmeden çık</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -362,5 +412,17 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 14,
     fontWeight: '700',
+  },
+  discardLink: {
+    marginTop: 4,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+  },
+  discardLinkText: {
+    color: 'rgba(245,240,232,0.5)',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

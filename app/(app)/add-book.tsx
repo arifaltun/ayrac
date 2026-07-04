@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView,
   StyleSheet, KeyboardAvoidingView, Platform,
-  Image, ActivityIndicator, Keyboard,
+  Image, ActivityIndicator, Keyboard, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -225,6 +225,20 @@ export default function AddBookScreen() {
 
   const canSubmit = title.trim().length > 0 && author.trim().length > 0;
 
+  // Doldurulmuş form onaysız silinmesin — backdrop ve kapat butonu buradan geçer
+  const isDirty = !!(title.trim() || author.trim() || pages.trim() || genre.trim() || coverImage);
+  const handleClose = () => {
+    if (!isDirty) { router.back(); return; }
+    Alert.alert(
+      'Değişiklikler kaydedilmedi',
+      'Kapatırsan yazdıkların silinecek.',
+      [
+        { text: 'Yazmaya devam et', style: 'cancel' },
+        { text: 'Vazgeç ve kapat', style: 'destructive', onPress: () => router.back() },
+      ],
+    );
+  };
+
   const handleSubmit = () => {
     if (!canSubmit) return;
     if (!isPro && books.length >= 5) { showPaywall('book_limit'); return; }
@@ -266,7 +280,7 @@ export default function AddBookScreen() {
       {/* Dimmed backdrop */}
       <Pressable
         style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }]}
-        onPress={() => router.back()}
+        onPress={handleClose}
       />
 
       <View
@@ -288,7 +302,7 @@ export default function AddBookScreen() {
           </Text>
           <Pressable
             style={[styles.closeBtn, { backgroundColor: t.bgSoft }]}
-            onPress={() => router.back()}
+            onPress={handleClose}
             hitSlop={8}
             accessibilityLabel="Kapat"
             accessibilityRole="button"

@@ -677,7 +677,7 @@ export default function LibraryScreen() {
         <View style={styles.modalBackdrop}>
           <View style={[styles.modalCard, { backgroundColor: t.surface }]}>
             <Text style={[styles.modalTitle, { color: t.fg, fontFamily: fonts.serifMedium }]}>Verileri sil</Text>
-            <Text style={[styles.modalDesc, { color: t.muted }]}>Tüm kitaplar, okuma süreleri ve istatistikler kalıcı olarak silinecek. Bu işlem geri alınamaz.</Text>
+            <Text style={[styles.modalDesc, { color: t.muted }]}>Tüm kitaplar, okuma süreleri, hedefler ve günlük hatırlatıcı kalıcı olarak silinecek. Bu işlem geri alınamaz.</Text>
             <View style={styles.modalButtons}>
               <Pressable style={[styles.modalBtn, { backgroundColor: t.bgSoft }]} onPress={() => setResetConfirmVisible(false)}>
                 <Text style={[styles.modalBtnText, { color: t.muted }]}>İptal</Text>
@@ -685,7 +685,17 @@ export default function LibraryScreen() {
               <Pressable
                 style={[styles.modalBtn, { backgroundColor: t.orange, flex: 1 }]}
                 onPress={async () => {
+                  // Kitaplarla birlikte hedef, isim, hatırlatıcı ve yarım oturum izi de gitmeli —
+                  // yoksa boş uygulamaya her akşam bildirim gelir
                   await resetAll();
+                  await cancelReminder();
+                  await saveReminderSettings({ ...reminder, enabled: false });
+                  setReminder((r) => ({ ...r, enabled: false }));
+                  setYearlyGoal(null);
+                  setMonthlyGoal(null);
+                  await AsyncStorage.removeItem('@ayrac_user_name');
+                  setUserName(null);
+                  await clearActiveSession();
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                   setResetConfirmVisible(false);
                 }}
