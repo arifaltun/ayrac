@@ -82,6 +82,19 @@ Her görev tamamlandığında `[ ]` → `[x]` yapılacak.
 
 ---
 
+## 5b. Tamamlananlar · Temmuz 2026
+
+- [x] **UX denetimi tamamlandı** — `AUDIT.md`'deki 57 maddenin 51'i kapatıldı
+  (4 Temmuz 2026): 7 kritik + paylaşım kartları (10) + erişilebilirlik süpürmesi
+  (kontrast/AA, 44pt hedefler, VoiceOver) + sürtünme maddeleri (kirli form onayı,
+  sessiz-mod tercihi, veri silme kapsamı, durum geçişi onayı) + hata mesajları
+  (timeout, çevrimdışı, izin çıkmazları, dışa aktarma) + kod sağlığı
+  ((auth) grubu kaldırıldı, FlatList/memo, bildirim kanalı, console temizliği).
+  Kalan 6 açık madde AUDIT.md sonunda listeli; en önemlisi kapakların çevrimdışı
+  önbelleklenmesi.
+
+---
+
 ## 6. Sıradaki İşler
 
 - [ ] **Kart rötuşları** — 5 varyantın gerçek cihaz Story paylaşımında ince ayarı:
