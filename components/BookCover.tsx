@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Image, Text, View } from 'react-native';
 
 // Tek kitap kapağı: görsel varsa fotoğraf, yoksa sırtlı renk bloğu + baş harf.
@@ -9,13 +10,16 @@ export function BookCover({ color, coverImage, title, size = 44, radius = 3 }: {
   size?: number;
   radius?: number;
 }) {
+  // Uzak kapak 404/çevrimdışı olursa boş kutu yerine renkli fallback'e düş
+  const [loadFailed, setLoadFailed] = useState(false);
   const width = size * 0.7;
-  if (coverImage) {
+  if (coverImage && !loadFailed) {
     return (
       <Image
         source={{ uri: coverImage }}
         style={{ width, height: size, borderRadius: radius }}
         resizeMode="cover"
+        onError={() => setLoadFailed(true)}
       />
     );
   }

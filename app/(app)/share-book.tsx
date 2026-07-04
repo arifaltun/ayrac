@@ -661,8 +661,8 @@ export default function ShareBookScreen() {
       const uri = await capture();
       if (!uri) return;
       await Sharing.shareAsync(uri, { mimeType: 'image/png' });
-    } catch (e) {
-      console.warn(e);
+    } catch {
+      Alert.alert('Paylaşılamadı', 'Kart hazırlanırken bir sorun oldu. Tekrar dener misin?');
     } finally {
       setLoading(false);
     }
@@ -689,8 +689,8 @@ export default function ShareBookScreen() {
       await MediaLibrary.saveToLibraryAsync(uri);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-    } catch (e) {
-      console.warn(e);
+    } catch {
+      Alert.alert('Kaydedilemedi', 'Kart galeriye kaydedilirken bir sorun oldu. Tekrar dener misin?');
     } finally {
       setLoading(false);
     }

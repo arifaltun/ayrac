@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator,
+  View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -394,8 +394,8 @@ export default function WrappedScreen() {
       const path = FileSystem.cacheDirectory + `ayrac-${slug}.csv`;
       await FileSystem.writeAsStringAsync(path, csv, { encoding: FileSystem.EncodingType.UTF8 });
       await Sharing.shareAsync(path, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
-    } catch (e) {
-      console.warn(e);
+    } catch {
+      Alert.alert('Dışa aktarılamadı', 'CSV dosyası oluşturulurken bir sorun oldu. Tekrar dener misin?');
     } finally {
       setExporting(null);
     }
@@ -409,8 +409,8 @@ export default function WrappedScreen() {
       const html = buildPdfHtml(finished, periodLabel, pages, avg, totalReadingSeconds);
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf' });
-    } catch (e) {
-      console.warn(e);
+    } catch {
+      Alert.alert('Dışa aktarılamadı', 'PDF oluşturulurken bir sorun oldu. Tekrar dener misin?');
     } finally {
       setExporting(null);
     }

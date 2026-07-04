@@ -20,6 +20,7 @@ import { ScalePressable } from '@/components/ScalePressable';
 import { KeyboardDoneBar, doneBarProps } from '@/components/KeyboardDoneBar';
 import { RatingSlider } from '@/components/RatingSlider';
 import { normalizeAuthorName } from '@/utils/authorName';
+import { permissionDeniedAlert } from '@/utils/permissionAlert';
 
 type Status = 'reading' | 'finished' | 'want';
 
@@ -35,9 +36,20 @@ function coverUrlFromId(coverId: number, size: 'S' | 'L' = 'L') {
   return `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg`;
 }
 
+// Asılı kalan istek spinner'ı dakikalarca döndürmesin — 8 sn'de kes
+async function fetchWithTimeout(url: string, init?: RequestInit, timeoutMs = 8000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function searchOpenLibrary(query: string): Promise<OLResult[]> {
   const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=title,author_name,number_of_pages_median,cover_i&limit=5`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   const json = await res.json();
   return (json.docs ?? []).map((doc: any) => ({
     title: doc.title ?? '',
@@ -53,11 +65,11 @@ async function resolveCoverByISBN(isbn: string, coverId: number | null): Promise
   if (coverId) return coverUrlFromId(coverId);
   const isbnUrl = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg?default=false`;
   try {
-    const head = await fetch(isbnUrl, { method: 'HEAD' });
+    const head = await fetchWithTimeout(isbnUrl, { method: 'HEAD' });
     if (head.ok) return isbnUrl;
   } catch {}
   try {
-    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+    const res = await fetchWithTimeout(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
     const json = await res.json();
     const thumb = json.items?.[0]?.volumeInfo?.imageLinks?.thumbnail;
     if (thumb) return String(thumb).replace('http://', 'https://');
@@ -67,7 +79,7 @@ async function resolveCoverByISBN(isbn: string, coverId: number | null): Promise
 
 async function lookupByISBN(isbn: string): Promise<OLResult | null> {
   const url = `https://openlibrary.org/search.json?isbn=${isbn}&fields=title,author_name,number_of_pages_median,cover_i&limit=1`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   const json = await res.json();
   const doc = json.docs?.[0];
   if (!doc) return null;
@@ -98,6 +110,8 @@ export default function AddBookScreen() {
 
   const [results, setResults] = useState<OLResult[]>([]);
   const [searching, setSearching] = useState(false);
+  // 'empty' = arama döndü ama sonuç yok, 'error' = ağ/istek hatası — ikisi ayrı anlatılır
+  const [searchStatus, setSearchStatus] = useState<'idle' | 'empty' | 'error'>('idle');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [coverImage, setCoverImage] = useState<string | undefined>();
@@ -107,6 +121,7 @@ export default function AddBookScreen() {
   const [scanCropUri, setScanCropUri] = useState<string | null>(null);
 
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
   const [scanLoading, setScanLoading] = useState(false);
   const [scanError, setScanError] = useState('');
   const [scanEvents, setScanEvents] = useState<string[]>([]);
@@ -125,6 +140,7 @@ export default function AddBookScreen() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (title.trim().length < 2) {
       setResults([]);
+      setSearchStatus('idle');
       return;
     }
     debounceRef.current = setTimeout(async () => {
@@ -132,10 +148,13 @@ export default function AddBookScreen() {
       try {
         const res = await searchOpenLibrary(title.trim());
         setResults(res);
+        setSearchStatus(res.length === 0 ? 'empty' : 'idle');
         // Manuel eklemede arka plan kapak önerisi
         setCoverSuggestion(res.find((r) => r.coverUrl)?.coverUrl ?? null);
       } catch {
+        // "Sonuç yok" ile "bağlantı yok" aynı sessizliğe düşmesin
         setResults([]);
+        setSearchStatus('error');
       } finally {
         setSearching(false);
       }
@@ -168,12 +187,15 @@ export default function AddBookScreen() {
     if (!cameraPermission?.granted) {
       const result = await requestCameraPermission();
       if (!result.granted) {
-        setScanError('Kamera izni verilmedi.');
+        // Kalıcı reddedildiyse tek çıkış Ayarlar — çıkmaz sokak bırakma
+        if (!result.canAskAgain) permissionDeniedAlert('Barkod taramak');
+        else setScanError('Kamera izni verilmedi.');
         return;
       }
     }
     scannedRef.current = false;
     scanCooldownRef.current = null;
+    setTorchOn(false);
     setScannerOpen(true);
   };
 
@@ -422,6 +444,13 @@ export default function AddBookScreen() {
             {scanError ? (
               <Text style={[styles.scanError, { color: t.orange }]}>{scanError}</Text>
             ) : null}
+            {!searching && results.length === 0 && searchStatus !== 'idle' && (
+              <Text style={[styles.scanError, { color: searchStatus === 'error' ? t.orange : t.muted }]}>
+                {searchStatus === 'error'
+                  ? 'Aramaya ulaşılamadı — bağlantını kontrol edip tekrar deneyebilirsin.'
+                  : 'Sonuç bulunamadı — bilgileri elle girip ekleyebilirsin.'}
+              </Text>
+            )}
 
             {results.length > 0 && (
               <View style={[styles.resultsList, { backgroundColor: t.surface, borderColor: t.border }]}>
@@ -546,6 +575,12 @@ export default function AddBookScreen() {
               Kitabı ekle
             </Text>
           </ScalePressable>
+          {/* Barkodla yazar boş gelebilir — buton neden pasif, söyle */}
+          {!canSubmit && title.trim().length > 0 && (
+            <Text style={[styles.submitHint, { color: t.muted }]}>
+              Eklemek için yazar alanını da doldur.
+            </Text>
+          )}
           </Pressable>
         </ScrollView>
         </KeyboardAvoidingView>
@@ -561,6 +596,7 @@ export default function AddBookScreen() {
             style={StyleSheet.absoluteFill}
             facing="back"
             autofocus="on"
+            enableTorch={torchOn}
             barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a'] }}
             onBarcodeScanned={handleBarcode}
             onCameraReady={() => logScan('kamera hazır, taranıyor…')}
@@ -597,6 +633,16 @@ export default function AddBookScreen() {
             accessibilityRole="button"
           >
             <Ionicons name="close" size={20} color="#fff" />
+          </Pressable>
+          {/* Karanlıkta tarama için fener */}
+          <Pressable
+            style={[styles.scannerTorch, { top: insets.top + 12 }]}
+            onPress={() => { Haptics.selectionAsync(); setTorchOn((v) => !v); }}
+            accessibilityLabel={torchOn ? 'Feneri kapat' : 'Feneri aç'}
+            accessibilityRole="button"
+            accessibilityState={{ selected: torchOn }}
+          >
+            <Ionicons name={torchOn ? 'flashlight' : 'flashlight-outline'} size={20} color={torchOn ? '#F5F0E8' : '#fff'} />
           </Pressable>
           <View style={[styles.scannerFooter, { paddingBottom: insets.bottom + 20 }]}>
             <Pressable
@@ -670,6 +716,7 @@ const styles = StyleSheet.create({
   statusBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
   submit: { padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 4 },
   submitText: { fontSize: 14, fontWeight: '700' },
+  submitHint: { fontSize: 11, textAlign: 'center' },
   scanBtn: {
     width: 44, borderWidth: 1, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
@@ -695,6 +742,12 @@ const styles = StyleSheet.create({
   scannerLoadingText: { color: '#fff', fontSize: 14 },
   scannerClose: {
     position: 'absolute', right: 20,
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  scannerTorch: {
+    position: 'absolute', left: 20,
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center', justifyContent: 'center',

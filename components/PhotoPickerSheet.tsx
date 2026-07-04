@@ -1,23 +1,13 @@
 import { useRef, useState } from 'react';
-import { Alert, Linking, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/constants/tokens';
 import { CoverCropper } from '@/components/CoverCropper';
+import { permissionDeniedAlert } from '@/utils/permissionAlert';
 
 type PickerAction = 'camera' | 'gallery';
-
-function permissionDeniedAlert(what: string) {
-  Alert.alert(
-    'İzin gerekiyor',
-    `${what} için Ayarlar'dan ayraç'a izin vermen gerekiyor.`,
-    [
-      { text: 'Vazgeç', style: 'cancel' },
-      { text: 'Ayarları aç', onPress: () => Linking.openSettings() },
-    ],
-  );
-}
 
 // Kapak fotoğrafı seçme alt sayfası — kitap ekleme ve düzenlemede ortak.
 //

@@ -23,6 +23,7 @@ import {
 } from '@/utils/notifications';
 import { normalizeAuthorName } from '@/utils/authorName';
 import { loadActiveSession, clearActiveSession } from '@/utils/activeSession';
+import { permissionDeniedAlert } from '@/utils/permissionAlert';
 
 const MONTHS_TR = [
   'Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
@@ -367,9 +368,12 @@ export default function LibraryScreen() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [goalModalVisible, setGoalModalVisible] = useState(false);
   const [goalInput, setGoalInput] = useState('');
+  const [goalError, setGoalError] = useState(false);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [recGenre, setRecGenre] = useState('');
   const [fetchingRecs, setFetchingRecs] = useState(false);
+  const [recError, setRecError] = useState(false);
+  const [recRetry, setRecRetry] = useState(0);
   const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
   const fetchedRef = useRef(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
@@ -439,14 +443,16 @@ export default function LibraryScreen() {
 
   const openGoalModal = () => {
     setGoalInput(activeGoal != null ? String(activeGoal) : '');
+    setGoalError(false);
     setGoalModalVisible(true);
   };
 
   const saveGoal = () => {
     const n = parseInt(goalInput);
-    const val = isNaN(n) || n <= 0 ? null : n;
-    if (view === 'yearly') setYearlyGoal(val);
-    else setMonthlyGoal(val);
+    // Geçersiz giriş hedefi sessizce kaldırmasın — kaldırmak "Kaldır"ın işi
+    if (isNaN(n) || n <= 0) { setGoalError(true); return; }
+    if (view === 'yearly') setYearlyGoal(n);
+    else setMonthlyGoal(n);
     setGoalModalVisible(false);
   };
 
@@ -484,10 +490,12 @@ export default function LibraryScreen() {
             genre: topGenre,
           }));
         setRecommendations(recs);
+        setRecError(false);
       })
-      .catch(() => {})
+      // İstek düşünce bölüm sessizce yok olmasın — tekrar dene satırı gösterilir
+      .catch(() => setRecError(true))
       .finally(() => setFetchingRecs(false));
-  }, [finished.length, isPro]);
+  }, [finished.length, isPro, recRetry]);
 
   // Load reminder settings on mount
   useEffect(() => {
@@ -511,7 +519,12 @@ export default function LibraryScreen() {
 
     if (enabled) {
       const granted = await requestNotificationPermission();
-      if (!granted) { setReminderVisible(false); return; }
+      if (!granted) {
+        // Sessizce kapanırsa kullanıcı hatırlatıcının kurulduğunu sanır
+        permissionDeniedAlert('Günlük hatırlatıcı kurmak');
+        setReminderVisible(false);
+        return;
+      }
       const currentBook = reading[0]?.title ?? null;
       await scheduleReminder(settings, currentBook, computeStreak(sessions));
     } else {
@@ -766,14 +779,19 @@ export default function LibraryScreen() {
                 {view === 'yearly' ? `${year}` : `${MONTHS_TR[monthIndex]} ${year}`} için kaç kitap okumak istiyorsun?
               </Text>
               <TextInput
-                style={[styles.modalInput, { backgroundColor: t.bgSoft, borderColor: t.border, color: t.fg }]}
+                style={[styles.modalInput, { backgroundColor: t.bgSoft, borderColor: goalError ? t.orange : t.border, color: t.fg }]}
                 value={goalInput}
-                onChangeText={setGoalInput}
+                onChangeText={(v) => { setGoalInput(v); setGoalError(false); }}
                 placeholder="12"
                 placeholderTextColor={t.mutedStrong}
                 keyboardType="number-pad"
                 autoFocus
               />
+              {goalError && (
+                <Text style={{ fontSize: 12, color: t.orange }}>
+                  1 ya da daha büyük bir sayı gir. Hedefi kaldırmak için “Kaldır”ı kullan.
+                </Text>
+              )}
               <View style={styles.modalButtons}>
                 {activeGoal != null && (
                   <Pressable
@@ -961,7 +979,7 @@ export default function LibraryScreen() {
               </>
             )}
 
-            {isPro && (fetchingRecs || recommendations.length > 0) && (
+            {isPro && (fetchingRecs || recError || recommendations.length > 0) && (
               <>
                 <SectionHeader label={`SANA ÖZEL${recGenre ? ` · ${recGenre}` : ''}`} />
                 {fetchingRecs ? (
@@ -969,6 +987,17 @@ export default function LibraryScreen() {
                     <ActivityIndicator size="small" color={t.mutedStrong} />
                     <Text style={[styles.recLoadingText, { color: t.muted }]}>Öneriler yükleniyor…</Text>
                   </View>
+                ) : recError ? (
+                  <Pressable
+                    style={styles.recLoading}
+                    onPress={() => { fetchedRef.current = false; setRecError(false); setRecRetry((n) => n + 1); }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Önerileri tekrar yükle"
+                  >
+                    <Text style={[styles.recLoadingText, { color: t.muted }]}>
+                      Öneriler yüklenemedi · <Text style={{ color: t.fg, fontWeight: '600' }}>Tekrar dene</Text>
+                    </Text>
+                  </Pressable>
                 ) : (
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.recScroll}>
                     {recommendations.map((rec) => (
