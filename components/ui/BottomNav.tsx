@@ -29,7 +29,8 @@ export function BottomNav() {
       <ScalePressable
         scale={0.92}
         style={styles.tab}
-        onPress={() => { Haptics.selectionAsync(); router.push('/library' as any); }}
+        // replace: sekmeler yığın biriktirmesin, Android geri tuşu geçmişi sarmasın
+        onPress={() => { Haptics.selectionAsync(); router.replace('/library' as any); }}
         accessibilityLabel="Kitaplık"
         accessibilityRole="tab"
         accessibilityState={{ selected: isLibrary }}
@@ -51,7 +52,7 @@ export function BottomNav() {
       <ScalePressable
         scale={0.92}
         style={styles.tab}
-        onPress={() => { Haptics.selectionAsync(); router.push('/wrapped' as any); }}
+        onPress={() => { Haptics.selectionAsync(); router.replace('/wrapped' as any); }}
         accessibilityLabel="Okuma özeti"
         accessibilityRole="tab"
         accessibilityState={{ selected: isWrapped }}

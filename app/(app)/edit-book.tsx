@@ -17,6 +17,7 @@ import { PhotoPickerSheet } from '@/components/PhotoPickerSheet';
 import { ProFeatureGate } from '@/components/ProFeatureGate';
 import { KeyboardDoneBar, doneBarProps } from '@/components/KeyboardDoneBar';
 import { RatingSlider } from '@/components/RatingSlider';
+import { normalizeGenre } from '@/utils/genre';
 
 type Status = 'reading' | 'finished' | 'want';
 
@@ -61,7 +62,7 @@ export default function EditBookScreen() {
       title: title.trim(),
       author: author.trim(),
       pages: parseInt(pages) || 0,
-      genre: genre.trim(),
+      genre: normalizeGenre(genre),
       status,
       rating: status === 'finished' ? rating : 0,
       color,
@@ -192,7 +193,7 @@ export default function EditBookScreen() {
           <Pressable onPress={Keyboard.dismiss} accessible={false}>
           <View style={styles.coverRow}>
             <Pressable
-              onPress={() => { console.log('[PhotoPicker] 0/6 sheet açılıyor (edit-book)'); setPickerVisible(true); }}
+              onPress={() => setPickerVisible(true)}
               style={{ position: 'relative' }}
               accessibilityLabel="Kapak fotoğrafı ekle veya değiştir"
               accessibilityRole="button"
@@ -272,7 +273,8 @@ export default function EditBookScreen() {
             </View>
           )}
 
-          {status === 'finished' && (
+          {/* Alıntı en çok okurken not edilir — 'Okuyacağım' dışında hep açık */}
+          {status !== 'want' && (
             <View style={styles.field}>
               <View style={styles.reviewLabelRow}>
                 <Text style={[styles.fieldLabel, { color: t.muted }]}>ALINTI</Text>

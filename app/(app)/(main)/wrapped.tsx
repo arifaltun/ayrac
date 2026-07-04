@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Alert,
 } from 'react-native';
@@ -47,7 +47,12 @@ function formatReadingTime(seconds: number): string {
   return `${seconds} sn`;
 }
 
-function ReadingHeatmap({ sessions, isDark, t }: { sessions: ReadingSession[]; isDark: boolean; t: any }) {
+// 364 hücre + tarih hesabı her ekran render'ında yeniden kurulmasın diye memo'lu;
+// sessions/isDark/t referansları değişmedikçe hiç çalışmaz
+const ReadingHeatmap = memo(function ReadingHeatmap({ sessions, isDark, t }: {
+  sessions: ReadingSession[]; isDark: boolean; t: any;
+}) {
+  const gridScrollRef = useRef<ScrollView>(null);
   const HEAT = isDark
     ? ['#1a1a1a', '#0d2e1e', '#165c3d', '#2a9b6a', '#4ecb91']
     : ['#ede9e5', '#d4f0e5', '#9ed9c0', '#4db895', '#1ca070'];
@@ -86,10 +91,10 @@ function ReadingHeatmap({ sessions, isDark, t }: { sessions: ReadingSession[]; i
   const gridStart = new Date(today);
   gridStart.setDate(gridStart.getDate() - todayDow - 51 * 7);
 
-  const weeks: Array<Array<{ key: string; future: boolean }>> = [];
+  const weeks: { key: string; future: boolean }[][] = [];
   const cur = new Date(gridStart);
   for (let w = 0; w < 52; w++) {
-    const week: Array<{ key: string; future: boolean }> = [];
+    const week: { key: string; future: boolean }[] = [];
     for (let d = 0; d < 7; d++) {
       const day = new Date(cur);
       const k = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
@@ -146,7 +151,14 @@ function ReadingHeatmap({ sessions, isDark, t }: { sessions: ReadingSession[]; i
         )}
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+      <ScrollView
+        ref={gridScrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ marginTop: 10 }}
+        // Kullanıcının görmek istediği uç bugün — grid açılışta en sağda başlar
+        onContentSizeChange={() => gridScrollRef.current?.scrollToEnd({ animated: false })}
+      >
         <View>
           {/* Month labels */}
           <View style={{ height: 14, position: 'relative', width: 52 * STEP }}>
@@ -202,6 +214,24 @@ function ReadingHeatmap({ sessions, isDark, t }: { sessions: ReadingSession[]; i
           <View key={i} style={[styles.heatLegendCell, { backgroundColor: color }]} />
         ))}
         <Text style={[styles.heatLegendTxt, { color: t.muted }]}>Çok</Text>
+      </View>
+    </View>
+  );
+});
+
+// Free'nin kilitli önizlemesi gerçek grid'i render etmesin — statik, hesapsız kopya
+function HeatmapPlaceholder({ t }: { t: any }) {
+  return (
+    <View style={[styles.card, { backgroundColor: t.surface, borderColor: t.border }]}>
+      <Text style={[styles.cardLabel, { color: t.muted }]}>OKUMA TAKVİMİ</Text>
+      <View style={{ flexDirection: 'row', gap: 2, marginTop: 10 }}>
+        {Array.from({ length: 26 }).map((_, wi) => (
+          <View key={wi} style={{ gap: 2 }}>
+            {Array.from({ length: 7 }).map((_, di) => (
+              <View key={di} style={{ width: 11, height: 11, borderRadius: 2, backgroundColor: t.bgSoft }} />
+            ))}
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -276,7 +306,7 @@ function buildPdfHtml(
     <thead>
       <tr>
         <th>#</th><th>Başlık</th><th>Yazar</th><th>Tür</th>
-        <th>Sayfa</th><th>Puan</th><th>Süre</th><th>Düşünce</th>
+        <th>Sayfa</th><th>Puan</th><th>Süre</th><th>Not</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
@@ -288,6 +318,7 @@ function buildPdfHtml(
 }
 
 function EmptyWrapped({ t }: { t: any }) {
+  const router = useRouter();
   return (
     <View style={styles.emptyContainer}>
       <View style={[styles.emptyIcon, { backgroundColor: t.surface, borderColor: t.border }]}>
@@ -299,6 +330,15 @@ function EmptyWrapped({ t }: { t: any }) {
       <Text style={[styles.emptyDesc, { color: t.muted }]}>
         Başka bir dönem seç ya da kitap ekle.
       </Text>
+      <Pressable
+        style={[styles.emptyButton, { backgroundColor: t.primary }]}
+        onPress={() => router.push('/add-book' as any)}
+        accessibilityLabel="Kitap ekle"
+        accessibilityRole="button"
+      >
+        <Ionicons name="add" size={14} color="#000" />
+        <Text style={styles.emptyButtonText}>Kitap ekle</Text>
+      </Pressable>
     </View>
   );
 }
@@ -327,15 +367,22 @@ export default function WrappedScreen() {
       const newMonth = monthIndex === 0 ? 11 : monthIndex - 1;
       const newYear = monthIndex === 0 ? year - 1 : year;
       if (!isPro && isOlderThan3Months(newMonth, newYear)) { showPaywall('history'); return; }
-      monthIndex === 0 ? (setMonthIndex(11), setYear((y) => y - 1)) : setMonthIndex((m) => m - 1);
+      setMonthIndex(newMonth);
+      setYear(newYear);
     } else {
-      if (!isPro && year - 1 < new Date().getFullYear() - 0) { showPaywall('history'); return; }
+      // Aylıkla aynı kural: 3 aylık serbest pencere hangi yıla taşıyorsa orası açık
+      if (!isPro && isOlderThan3Months(11, year - 1)) { showPaywall('history'); return; }
       setYear((y) => y - 1);
     }
   };
   const onNext = () => {
     if (view === 'monthly') {
-      monthIndex === 11 ? (setMonthIndex(0), setYear((y) => y + 1)) : setMonthIndex((m) => m + 1);
+      if (monthIndex === 11) {
+        setMonthIndex(0);
+        setYear((y) => y + 1);
+      } else {
+        setMonthIndex((m) => m + 1);
+      }
     } else setYear((y) => y + 1);
   };
 
@@ -377,7 +424,7 @@ export default function WrappedScreen() {
     if (finished.length === 0) return;
     setExporting('csv');
     try {
-      const header = ['Sıra', 'Başlık', 'Yazar', 'Sayfa', 'Tür', 'Puan', 'Okuma Süresi (dk)', 'Düşünce', 'Tarih'];
+      const header = ['Sıra', 'Başlık', 'Yazar', 'Sayfa', 'Tür', 'Puan', 'Okuma Süresi (dk)', 'Not', 'Tarih'];
       const dataRows = finished.map((b, i) => [
         String(i + 1),
         csvEscape(b.title),
@@ -470,7 +517,7 @@ export default function WrappedScreen() {
                 title="Okuma takvimi Pro’da"
                 description="Yıllık ısı haritası ve okuma serilerin."
               >
-                <ReadingHeatmap sessions={sessions} isDark={isDark} t={t} />
+                {isPro ? <ReadingHeatmap sessions={sessions} isDark={isDark} t={t} /> : <HeatmapPlaceholder t={t} />}
               </ProFeatureGate>
             )}
           </>
@@ -620,7 +667,7 @@ export default function WrappedScreen() {
                 title="Okuma takvimi Pro’da"
                 description="Yıllık ısı haritası ve okuma serilerin."
               >
-                <ReadingHeatmap sessions={sessions} isDark={isDark} t={t} />
+                {isPro ? <ReadingHeatmap sessions={sessions} isDark={isDark} t={t} /> : <HeatmapPlaceholder t={t} />}
               </ProFeatureGate>
             )}
 
@@ -723,4 +770,9 @@ const styles = StyleSheet.create({
   emptyIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   emptyTitle: { fontSize: 16, marginTop: 4 },
   emptyDesc: { fontSize: 12, textAlign: 'center', maxWidth: 220, lineHeight: 18, color: '#888' },
+  emptyButton: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, marginTop: 8, minHeight: 44,
+  },
+  emptyButtonText: { fontSize: 12, fontWeight: '600', color: '#000' },
 });

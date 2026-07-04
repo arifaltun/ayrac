@@ -20,6 +20,7 @@ import { ScalePressable } from '@/components/ScalePressable';
 import { KeyboardDoneBar, doneBarProps } from '@/components/KeyboardDoneBar';
 import { RatingSlider } from '@/components/RatingSlider';
 import { normalizeAuthorName } from '@/utils/authorName';
+import { normalizeGenre } from '@/utils/genre';
 import { permissionDeniedAlert } from '@/utils/permissionAlert';
 
 type Status = 'reading' | 'finished' | 'want';
@@ -132,7 +133,7 @@ export default function AddBookScreen() {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
   const logScan = (msg: string) => {
-    console.log('[Scanner]', msg);
+    if (__DEV__) console.log('[Scanner]', msg);
     setScanEvents((prev) => [...prev.slice(-2), msg]);
   };
 
@@ -170,12 +171,10 @@ export default function AddBookScreen() {
     if (item.pages > 0) setPages(String(item.pages));
     // Kapak otomatik gelsin — kullanıcının kendi çektiği fotoğrafı ezme.
     // Otomatik kapak formda önizleme olarak görünür; "Değiştir" ile değiştirilebilir.
-    if (item.coverUrl) {
-      setCoverImage((prev) => {
-        if (prev) return prev;
-        setCoverSource('auto');
-        return item.coverUrl ?? undefined;
-      });
+    // (setState updater içinde yan etki StrictMode'da çift çalışır — dışarıda koşullu)
+    if (item.coverUrl && !coverImage) {
+      setCoverImage(item.coverUrl);
+      setCoverSource('auto');
     }
     setResults([]);
     setCoverSuggestion(null);
@@ -269,7 +268,7 @@ export default function AddBookScreen() {
       title: title.trim(),
       author: author.trim(),
       pages: parseInt(pages) || 0,
-      genre: genre.trim(),
+      genre: normalizeGenre(genre),
       status,
       rating: status === 'finished' ? rating : 0,
       color,
@@ -333,6 +332,21 @@ export default function AddBookScreen() {
           </Pressable>
         </View>
 
+        {/* Sınırdaki kullanıcı formu doldurup en sonda paywall'a çarpmasın — baştan söyle */}
+        {!isPro && books.length >= 5 && (
+          <Pressable
+            style={[styles.limitBanner, { backgroundColor: t.primarySoft, borderColor: t.primary }]}
+            onPress={() => showPaywall('book_limit')}
+            accessibilityRole="button"
+            accessibilityLabel="Kitap sınırındasın, Pro'ya geç"
+          >
+            <Ionicons name="information-circle-outline" size={15} color={t.primary} />
+            <Text style={[styles.limitBannerText, { color: t.primary }]}>
+              Free planda 5 kitap sınırındasın — yeni kitap eklemek Pro’yla mümkün.
+            </Text>
+          </Pressable>
+        )}
+
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -348,7 +362,7 @@ export default function AddBookScreen() {
           {/* Cover preview + color picker */}
           <View style={styles.coverRow}>
             <Pressable
-              onPress={() => { console.log('[PhotoPicker] 0/6 sheet açılıyor (add-book)'); setPickerVisible(true); }}
+              onPress={() => setPickerVisible(true)}
               style={{ position: 'relative' }}
               accessibilityLabel="Kapak fotoğrafı ekle veya değiştir"
               accessibilityRole="button"
@@ -717,6 +731,12 @@ const styles = StyleSheet.create({
   submit: { padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 4 },
   submitText: { fontSize: 14, fontWeight: '700' },
   submitHint: { fontSize: 11, textAlign: 'center' },
+  limitBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8,
+    marginBottom: 12,
+  },
+  limitBannerText: { flex: 1, fontSize: 12, fontWeight: '500' },
   scanBtn: {
     width: 44, borderWidth: 1, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',

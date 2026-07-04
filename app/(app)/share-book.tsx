@@ -13,6 +13,7 @@ import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
 import { useBooks } from '@/context/BooksContext';
+import { usePro } from '@/context/ProContext';
 import { fonts } from '@/constants/tokens';
 
 const { width: W } = Dimensions.get('window');
@@ -575,6 +576,7 @@ export default function ShareBookScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { books, sessions } = useBooks();
+  const { isPro, showPaywall } = usePro();
 
   const book = books.find((b) => b.id === id);
   const [format, setFormat] = useState<Format>('story');
@@ -612,13 +614,24 @@ export default function ShareBookScreen() {
 
   useEffect(() => {
     sv.value = withSpring(1, { damping: 14, stiffness: 140 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!book) router.back();
   }, [book, router]);
 
-  if (!book) return null;
+  // Kapı kaynakta değil hedefte: derin bağlantı dahil hangi yoldan gelinirse
+  // gelinsin BİTİRDİM kartı Pro'suz açılmaz
+  useEffect(() => {
+    if (!isPro) {
+      showPaywall('bitirdim_card');
+      router.back();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPro]);
+
+  if (!book || !isPro) return null;
 
   // Küçük ekranlarda (SE/mini) kart, önizleme alanına orantılı küçültülür;
   // capture ölçekten etkilenmez çünkü transform ata görünümde kalır.

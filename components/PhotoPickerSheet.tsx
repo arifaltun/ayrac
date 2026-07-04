@@ -9,6 +9,9 @@ import { permissionDeniedAlert } from '@/utils/permissionAlert';
 
 type PickerAction = 'camera' | 'gallery';
 
+// Teşhis logları yalnız geliştirmede — üretim konsolunu kirletmesin
+const dlog = (...args: unknown[]) => { if (__DEV__) console.log('[PhotoPicker]', ...args); };
+
 // Kapak fotoğrafı seçme alt sayfası — kitap ekleme ve düzenlemede ortak.
 //
 // İki bilinen tuzağa karşı sağlamlaştırıldı:
@@ -28,31 +31,31 @@ export function PhotoPickerSheet({ visible, onClose, onPicked, canRemove, onRemo
   const pendingRef = useRef<PickerAction | null>(null);
 
   const launch = async (action: PickerAction) => {
-    console.log('[PhotoPicker] 4/6 launch başlıyor:', action);
+    dlog('4/6 launch başlıyor:', action);
     try {
       if (action === 'camera') {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
-        console.log('[PhotoPicker] 5/6 kamera izni:', perm.status, '· canAskAgain:', perm.canAskAgain);
+        dlog('5/6 kamera izni:', perm.status, '· canAskAgain:', perm.canAskAgain);
         if (perm.status !== 'granted') {
           permissionDeniedAlert('Kapak fotoğrafı çekmek');
           return;
         }
         const result = await ImagePicker.launchCameraAsync({ quality: 0.9 });
-        console.log('[PhotoPicker] 6/6 kamera sonucu:', result.canceled ? 'iptal edildi' : result.assets?.[0]?.uri);
+        dlog('6/6 kamera sonucu:', result.canceled ? 'iptal edildi' : result.assets?.[0]?.uri);
         if (!result.canceled && result.assets?.[0]?.uri) setRawUri(result.assets[0].uri);
       } else {
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        console.log('[PhotoPicker] 5/6 galeri izni:', perm.status, '· canAskAgain:', perm.canAskAgain);
+        dlog('5/6 galeri izni:', perm.status, '· canAskAgain:', perm.canAskAgain);
         if (perm.status !== 'granted') {
           permissionDeniedAlert('Galeriden kapak seçmek');
           return;
         }
         const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9 });
-        console.log('[PhotoPicker] 6/6 galeri sonucu:', result.canceled ? 'iptal edildi' : result.assets?.[0]?.uri);
+        dlog('6/6 galeri sonucu:', result.canceled ? 'iptal edildi' : result.assets?.[0]?.uri);
         if (!result.canceled && result.assets?.[0]?.uri) setRawUri(result.assets[0].uri);
       }
     } catch (e) {
-      console.log('[PhotoPicker] HATA — launch istisna fırlattı:', e);
+      dlog('HATA — launch istisna fırlattı:', e);
       Alert.alert('Bir sorun oluştu', 'Fotoğraf seçici açılamadı. Tekrar dener misin?');
     }
   };
@@ -60,14 +63,14 @@ export function PhotoPickerSheet({ visible, onClose, onPicked, canRemove, onRemo
   // Modal kapanışı tamamlanınca bekleyen eylemi çalıştır (çift çağrıya karşı ref sıfırlanır)
   const runPending = (source: string) => {
     const action = pendingRef.current;
-    console.log(`[PhotoPicker] 3/6 modal kapandı (${source}), bekleyen eylem:`, action ?? 'yok');
+    dlog(`3/6 modal kapandı (${source}), bekleyen eylem:`, action ?? 'yok');
     if (!action) return;
     pendingRef.current = null;
     launch(action);
   };
 
   const select = (action: PickerAction) => {
-    console.log('[PhotoPicker] 2/6 buton basıldı:', action);
+    dlog('2/6 buton basıldı:', action);
     pendingRef.current = action;
     onClose();
     // iOS: onDismiss asıl tetik; timeout yalnızca sigorta (runPending ref'i sıfırladığı
@@ -80,12 +83,12 @@ export function PhotoPickerSheet({ visible, onClose, onPicked, canRemove, onRemo
       <CoverCropper
         uri={rawUri}
         onDone={(cropped) => {
-          console.log('[PhotoPicker] kırpma tamamlandı:', cropped);
+          dlog('kırpma tamamlandı:', cropped);
           setRawUri(null);
           onPicked(cropped);
         }}
         onCancel={() => {
-          console.log('[PhotoPicker] kırpma iptal edildi');
+          dlog('kırpma iptal edildi');
           setRawUri(null);
         }}
       />
@@ -94,14 +97,14 @@ export function PhotoPickerSheet({ visible, onClose, onPicked, canRemove, onRemo
         transparent
         animationType="fade"
         onRequestClose={onClose}
-        onShow={() => console.log('[PhotoPicker] 1/6 sheet açıldı')}
+        onShow={() => dlog('1/6 sheet açıldı')}
         onDismiss={Platform.OS === 'ios' ? () => runPending('onDismiss') : undefined}
       >
         <View style={styles.backdrop}>
           {/* Kapatma alanı — butonların EBEVEYNİ değil, kardeşi */}
           <Pressable
             style={StyleSheet.absoluteFill}
-            onPress={() => { console.log('[PhotoPicker] backdrop ile kapatıldı'); onClose(); }}
+            onPress={() => { dlog('backdrop ile kapatıldı'); onClose(); }}
             accessibilityLabel="Kapat"
           />
           <View style={[styles.sheet, { backgroundColor: t.surface }]}>
@@ -110,7 +113,7 @@ export function PhotoPickerSheet({ visible, onClose, onPicked, canRemove, onRemo
             </Text>
             <Pressable
               style={({ pressed }) => [styles.option, { borderColor: t.border, opacity: pressed ? 0.6 : 1 }]}
-              onPressIn={() => console.log('[PhotoPicker] onPressIn: kamera')}
+              onPressIn={() => dlog('onPressIn: kamera')}
               onPress={() => select('camera')}
               accessibilityRole="button"
               accessibilityLabel="Fotoğraf çek"
@@ -120,7 +123,7 @@ export function PhotoPickerSheet({ visible, onClose, onPicked, canRemove, onRemo
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.option, { borderColor: t.border, opacity: pressed ? 0.6 : 1 }]}
-              onPressIn={() => console.log('[PhotoPicker] onPressIn: galeri')}
+              onPressIn={() => dlog('onPressIn: galeri')}
               onPress={() => select('gallery')}
               accessibilityRole="button"
               accessibilityLabel="Galeriden seç"
@@ -131,7 +134,7 @@ export function PhotoPickerSheet({ visible, onClose, onPicked, canRemove, onRemo
             {canRemove && (
               <Pressable
                 style={styles.remove}
-                onPress={() => { console.log('[PhotoPicker] fotoğraf kaldırıldı'); onRemove?.(); onClose(); }}
+                onPress={() => { dlog('fotoğraf kaldırıldı'); onRemove?.(); onClose(); }}
                 accessibilityRole="button"
               >
                 <Text style={[styles.removeText, { color: t.orange }]}>Fotoğrafı kaldır</Text>

@@ -66,6 +66,9 @@ const PRO_FEATURES = [
 
 const STORAGE_KEY = '@ayrac_is_pro';
 
+// Fiyat tek yerden: paywall ve ayarlar satırı aynı sabiti okur
+export const PRO_PRICE_LABEL = '₺29,99/ay';
+
 type ProContextValue = {
   isPro: boolean;
   showPaywall: (trigger: PaywallTrigger) => void;
@@ -158,7 +161,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
               accessibilityRole="button"
             >
               <Text style={[styles.upgradeBtnText, { color: t.bg, fontFamily: fonts.serifMedium }]}>
-                Pro’ya Geç · ₺29,99/ay
+                Pro’ya Geç · {PRO_PRICE_LABEL}
               </Text>
             </ScalePressable>
 

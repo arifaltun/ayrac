@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import {
-  View, Text, ScrollView, Pressable, StyleSheet, Image, Alert,
+  View, Text, ScrollView, Pressable, StyleSheet, Image, Alert, FlatList,
   Modal, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, DevSettings,
+  ListRenderItemInfo,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -16,10 +17,10 @@ import { ScalePressable } from '@/components/ScalePressable';
 import { BookCover } from '@/components/BookCover';
 import { RatingText } from '@/components/RatingText';
 import { ProFeatureGate } from '@/components/ProFeatureGate';
-import { usePro } from '@/context/ProContext';
+import { usePro, PRO_PRICE_LABEL } from '@/context/ProContext';
 import {
   loadReminderSettings, saveReminderSettings, scheduleReminder,
-  cancelReminder, requestNotificationPermission, computeStreak, ReminderSettings,
+  cancelReminder, requestNotificationPermission, ReminderSettings,
 } from '@/utils/notifications';
 import { normalizeAuthorName } from '@/utils/authorName';
 import { loadActiveSession, clearActiveSession } from '@/utils/activeSession';
@@ -54,7 +55,9 @@ function StatBox({ label, value, sub, highlight }: {
   );
 }
 
-function BookRow({ book }: { book: Book }) {
+// Liste satırı memo'lu: Pro'da sınırsız kitapla her modal/state değişiminde
+// tüm satırların yeniden render edilmesini engeller
+const BookRow = memo(function BookRow({ book }: { book: Book }) {
   const { t } = useTheme();
   const router = useRouter();
   const isReading = book.status === 'reading';
@@ -100,7 +103,7 @@ function BookRow({ book }: { book: Book }) {
       </View>
     </ScalePressable>
   );
-}
+});
 
 function SectionHeader({ label }: { label: string }) {
   const { t } = useTheme();
@@ -356,9 +359,14 @@ function EmptyState() {
 
 type ViewMode = 'monthly' | 'yearly';
 
+// FlatList satır modeli: bölüm başlıkları ve kitaplar tek düz listede akar
+type LibraryRow =
+  | { key: string; kind: 'section'; label: string }
+  | { key: string; kind: 'book'; book: Book };
+
 export default function LibraryScreen() {
   const { t, isDark, toggle } = useTheme();
-  const { books, sessions, addBook, updateBook, addSession, resetAll } = useBooks();
+  const { books, addBook, updateBook, addSession, resetAll } = useBooks();
   const { yearlyGoal, monthlyGoal, setYearlyGoal, setMonthlyGoal } = useGoal();
   const { isPro, showPaywall, toggleProForDev } = usePro();
   const insets = useSafeAreaInsets();
@@ -420,18 +428,29 @@ export default function LibraryScreen() {
     });
   }, [books, addSession, updateBook]);
 
-  const reading = books.filter((b) => b.status === 'reading');
-  const want = books.filter((b) => b.status === 'want');
-  const reviewed = books.filter((b) => b.status === 'finished' && !!b.review);
+  // Filtreler/istatistikler her modal-state değişiminde yeniden hesaplanmasın
+  const reading = useMemo(() => books.filter((b) => b.status === 'reading'), [books]);
+  const want = useMemo(() => books.filter((b) => b.status === 'want'), [books]);
+  const reviewed = useMemo(
+    () => books.filter((b) => b.status === 'finished' && !!b.review),
+    [books],
+  );
+  const finished = useMemo(() => books.filter((b) => b.status === 'finished'), [books]);
 
-  const finishedInPeriod = books.filter((b) => {
-    if (b.status !== 'finished') return false;
-    const d = new Date(finishedDate(b));
-    if (view === 'yearly') return d.getFullYear() === year;
-    return d.getFullYear() === year && d.getMonth() === monthIndex;
-  });
-  const finished = books.filter((b) => b.status === 'finished');
-  const pages = finishedInPeriod.reduce((s, b) => s + b.pages, 0);
+  const finishedInPeriod = useMemo(
+    () =>
+      books.filter((b) => {
+        if (b.status !== 'finished') return false;
+        const d = new Date(finishedDate(b));
+        if (view === 'yearly') return d.getFullYear() === year;
+        return d.getFullYear() === year && d.getMonth() === monthIndex;
+      }),
+    [books, view, year, monthIndex],
+  );
+  const pages = useMemo(
+    () => finishedInPeriod.reduce((s, b) => s + b.pages, 0),
+    [finishedInPeriod],
+  );
 
   const activeGoal = view === 'yearly' ? yearlyGoal : monthlyGoal;
   const goalProgress = activeGoal != null
@@ -495,6 +514,8 @@ export default function LibraryScreen() {
       // İstek düşünce bölüm sessizce yok olmasın — tekrar dene satırı gösterilir
       .catch(() => setRecError(true))
       .finally(() => setFetchingRecs(false));
+    // fetchedRef zaten tek seferlik çalışmayı garanti eder; books/finished bilerek dışarıda
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finished.length, isPro, recRetry]);
 
   // Load reminder settings on mount
@@ -525,8 +546,7 @@ export default function LibraryScreen() {
         setReminderVisible(false);
         return;
       }
-      const currentBook = reading[0]?.title ?? null;
-      await scheduleReminder(settings, currentBook, computeStreak(sessions));
+      await scheduleReminder(settings);
     } else {
       await cancelReminder();
     }
@@ -558,17 +578,43 @@ export default function LibraryScreen() {
       const newM = monthIndex === 0 ? 11 : monthIndex - 1;
       const newY = monthIndex === 0 ? year - 1 : year;
       if (!isPro && isOlderThan3Months(newM, newY)) { showPaywall('history'); return; }
-      monthIndex === 0 ? (setMonthIndex(11), setYear((y) => y - 1)) : setMonthIndex((m) => m - 1);
+      setMonthIndex(newM);
+      setYear(newY);
     } else {
-      if (!isPro && year - 1 < new Date().getFullYear()) { showPaywall('history'); return; }
+      // Yıllıkta da aynı kural: 3 aylık serbest pencere hangi yıla taşıyorsa orası açık
+      if (!isPro && isOlderThan3Months(11, year - 1)) { showPaywall('history'); return; }
       setYear((y) => y - 1);
     }
   };
   const onNext = () => {
     if (view === 'monthly') {
-      monthIndex === 11 ? (setMonthIndex(0), setYear((y) => y + 1)) : setMonthIndex((m) => m + 1);
+      if (monthIndex === 11) {
+        setMonthIndex(0);
+        setYear((y) => y + 1);
+      } else {
+        setMonthIndex((m) => m + 1);
+      }
     } else setYear((y) => y + 1);
   };
+
+  const listRows = useMemo(() => {
+    const rows: LibraryRow[] = [];
+    const pushSection = (label: string, items: Book[]) => {
+      if (items.length === 0) return;
+      rows.push({ key: `section-${label}`, kind: 'section', label });
+      items.forEach((b) => rows.push({ key: b.id, kind: 'book', book: b }));
+    };
+    pushSection('OKUNUYOR', reading);
+    pushSection('BİTİRİLENLER', finished);
+    pushSection('OKUNACAKLAR', want);
+    return rows;
+  }, [reading, finished, want]);
+
+  const renderRow = useCallback(
+    ({ item }: ListRenderItemInfo<LibraryRow>) =>
+      item.kind === 'section' ? <SectionHeader label={item.label} /> : <BookRow book={item.book} />,
+    [],
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: t.bg }]}>
@@ -597,7 +643,7 @@ export default function LibraryScreen() {
               >
                 <View style={styles.settingsRowLeft}>
                   <Ionicons name="star-outline" size={16} color={t.primary} />
-                  <Text style={[styles.settingsRowLabel, { color: t.primary }]}>Pro’ya Geç · ₺29,99/ay</Text>
+                  <Text style={[styles.settingsRowLabel, { color: t.primary }]}>Pro’ya Geç · {PRO_PRICE_LABEL}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={14} color={t.primary} />
               </Pressable>
@@ -729,7 +775,7 @@ export default function LibraryScreen() {
                 Günlük hatırlatıcı
               </Text>
               <Text style={[styles.modalDesc, { color: t.muted }]}>
-                Her gün belirlediğin saatte şu an okuduğun kitabı ve okuma serini gösterir.
+                Her gün belirlediğin saatte okumayı nazikçe hatırlatır.
               </Text>
               <View style={styles.reminderTimeRow}>
                 <TextInput
@@ -775,8 +821,9 @@ export default function LibraryScreen() {
               <Text style={[styles.modalTitle, { color: t.fg, fontFamily: fonts.serifMedium }]}>
                 {view === 'yearly' ? 'Yıllık' : 'Aylık'} okuma hedefi
               </Text>
+              {/* Hedef dönem-bazlı değil, global — metin de öyle söylesin */}
               <Text style={[styles.modalDesc, { color: t.muted }]}>
-                {view === 'yearly' ? `${year}` : `${MONTHS_TR[monthIndex]} ${year}`} için kaç kitap okumak istiyorsun?
+                Her {view === 'yearly' ? 'yıl' : 'ay'} için hedefin: kaç kitap okumak istiyorsun?
               </Text>
               <TextInput
                 style={[styles.modalInput, { backgroundColor: t.bgSoft, borderColor: goalError ? t.orange : t.border, color: t.fg }]}
@@ -861,8 +908,8 @@ export default function LibraryScreen() {
         {greeting()}{userName ? `, ${userName}` : ''}.
       </Text>
 
-      {/* Free tier banner */}
-      {!isPro && books.length >= 3 && (
+      {/* Free tier banner — 'kutla ama bağırma': yalnız sınıra dayanınca görünür */}
+      {!isPro && books.length >= 5 && (
         <Pressable
           style={[styles.freeBanner, { backgroundColor: t.surface, borderColor: t.border }]}
           onPress={() => showPaywall('book_limit')}
@@ -912,47 +959,28 @@ export default function LibraryScreen() {
         </Pressable>
       </View>
 
-      {/* List */}
-      <ScrollView
+      {/* List — ScrollView+map yerine FlatList: satırlar ihtiyaç oldukça mount olur */}
+      <FlatList
         style={{ flex: 1 }}
+        data={listRows}
+        keyExtractor={(item) => item.key}
+        renderItem={renderRow}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-      >
-        {activeGoal != null && (
-          <GoalDetailCard
-            view={view}
-            year={year}
-            monthIndex={monthIndex}
-            finishedInPeriod={finishedInPeriod}
-            activeGoal={activeGoal}
-          />
-        )}
-
-        {books.length === 0 ? (
-          <EmptyState />
-        ) : (
+        ListHeaderComponent={
+          activeGoal != null ? (
+            <GoalDetailCard
+              view={view}
+              year={year}
+              monthIndex={monthIndex}
+              finishedInPeriod={finishedInPeriod}
+              activeGoal={activeGoal}
+            />
+          ) : null
+        }
+        ListEmptyComponent={books.length === 0 ? <EmptyState /> : null}
+        ListFooterComponent={books.length === 0 ? null : (
           <>
-            {reading.length > 0 && (
-              <>
-                <SectionHeader label="OKUNUYOR" />
-                {reading.map((b) => <BookRow key={b.id} book={b} />)}
-              </>
-            )}
-
-            {finished.length > 0 && (
-              <>
-                <SectionHeader label="BİTİRİLENLER" />
-                {finished.map((b) => <BookRow key={b.id} book={b} />)}
-              </>
-            )}
-
-            {want.length > 0 && (
-              <>
-                <SectionHeader label="OKUNACAKLAR" />
-                {want.map((b) => <BookRow key={b.id} book={b} />)}
-              </>
-            )}
-
             {reviewed.length > 0 && (
               <>
                 <SectionHeader label="NOTLARIM" />
@@ -1017,13 +1045,15 @@ export default function LibraryScreen() {
               scale={0.97}
               style={[styles.addRow, { borderColor: t.borderStrong }]}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/add-book' as any); }}
+              accessibilityLabel="Kitap ekle"
+              accessibilityRole="button"
             >
               <Ionicons name="add" size={14} color={t.muted} />
               <Text style={[styles.addRowText, { color: t.muted }]}>Kitap ekle</Text>
             </ScalePressable>
           </>
         )}
-      </ScrollView>
+      />
     </View>
   );
 }

@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -36,49 +37,40 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return status === 'granted';
 }
 
-export async function scheduleReminder(
-  settings: ReminderSettings,
-  currentBook: string | null,
-  streak: number,
-): Promise<void> {
+const ANDROID_CHANNEL_ID = 'daily-reminder';
+
+// Android 8+ kanal olmadan zamanlanmış bildirim hiç görünmeyebilir
+async function ensureAndroidChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
+    name: 'Günlük hatırlatıcı',
+    importance: Notifications.AndroidImportance.DEFAULT,
+    sound: undefined,
+  });
+}
+
+export async function scheduleReminder(settings: ReminderSettings): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
   if (!settings.enabled) return;
+  await ensureAndroidChannel();
 
-  const body = currentBook
-    ? `Şu an okuyorsun: ${currentBook}`
-    : streak > 0
-    ? 'Bugün okumayı unutma!'
-    : 'Okuma listene bir kitap ekle ve okumaya başla.';
-
-  const title = streak > 0 ? `${streak} günlük seri 🔥` : 'ayraç · okuma zamanı';
-
+  // İçerik zamanlama anında donduğu için kitap adı/seri gibi bayatlayan
+  // bilgiler kullanılmaz — nötr metin her gün doğru kalır
   await Notifications.scheduleNotificationAsync({
-    content: { title, body, sound: false },
+    content: {
+      title: 'ayraç · okuma zamanı',
+      body: 'Bugün okumak için birkaç dakika ayır.',
+      sound: false,
+    },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour: settings.hour,
       minute: settings.minute,
+      channelId: ANDROID_CHANNEL_ID,
     },
   });
 }
 
 export async function cancelReminder(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
-}
-
-// Bugünden geriye kesintisiz okuma yapılan gün sayısı
-export function computeStreak(sessions: { date: number }[]): number {
-  const days = new Set(
-    sessions.map((s) => {
-      const d = new Date(s.date);
-      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    }),
-  );
-  let count = 0;
-  const d = new Date();
-  while (days.has(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`)) {
-    count++;
-    d.setDate(d.getDate() - 1);
-  }
-  return count;
 }
