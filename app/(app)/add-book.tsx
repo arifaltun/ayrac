@@ -274,6 +274,9 @@ export default function AddBookScreen() {
           styles.sheet,
           { backgroundColor: t.surface, paddingBottom: Math.max(insets.bottom, 20) + 20 },
         ]}
+        // Tarayıcı overlay Modal değil; açıkken VoiceOver odağı formda kalmasın
+        accessibilityElementsHidden={scannerOpen}
+        importantForAccessibility={scannerOpen ? 'no-hide-descendants' : 'auto'}
       >
         {/* Handle */}
         <View style={[styles.handle, { backgroundColor: t.border }]} />
@@ -283,7 +286,13 @@ export default function AddBookScreen() {
           <Text style={[styles.sheetTitle, { color: t.fg, fontFamily: fonts.serifMedium }]}>
             Kitap ekle
           </Text>
-          <Pressable style={[styles.closeBtn, { backgroundColor: t.bgSoft }]} onPress={() => router.back()}>
+          <Pressable
+            style={[styles.closeBtn, { backgroundColor: t.bgSoft }]}
+            onPress={() => router.back()}
+            hitSlop={8}
+            accessibilityLabel="Kapat"
+            accessibilityRole="button"
+          >
             <Ionicons name="close" size={14} color={t.muted} />
           </Pressable>
         </View>
@@ -305,6 +314,8 @@ export default function AddBookScreen() {
             <Pressable
               onPress={() => { console.log('[PhotoPicker] 0/6 sheet açılıyor (add-book)'); setPickerVisible(true); }}
               style={{ position: 'relative' }}
+              accessibilityLabel="Kapak fotoğrafı ekle veya değiştir"
+              accessibilityRole="button"
             >
               <BookCover title={title} color={color} coverImage={coverImage} size={76} radius={4} />
               <View style={[styles.coverEditBadge, { backgroundColor: t.surface }]}>
@@ -388,6 +399,8 @@ export default function AddBookScreen() {
               <Pressable
                 onPress={openScanner}
                 style={[styles.scanBtn, { backgroundColor: t.surface2, borderColor: t.border }]}
+                accessibilityLabel="Barkod tara"
+                accessibilityRole="button"
               >
                 <Ionicons name="barcode-outline" size={20} color={t.muted} />
               </Pressable>
@@ -479,6 +492,9 @@ export default function AddBookScreen() {
                 <Pressable
                   key={k}
                   onPress={() => { Haptics.selectionAsync(); setStatus(k); }}
+                  accessibilityRole="radio"
+                  accessibilityLabel={lbl}
+                  accessibilityState={{ selected: status === k }}
                   style={[
                     styles.statusBtn,
                     {

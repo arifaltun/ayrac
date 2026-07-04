@@ -177,6 +177,17 @@ export function CoverCropper({ uri, onDone, onCancel }: {
             )}
           </Pressable>
         </View>
+
+        {/* Jest kullanamayan (ör. ekran okuyucu) kullanıcılar için kırpmasız yol */}
+        <Pressable
+          style={styles.skipCropBtn}
+          onPress={() => onDone(uri)}
+          disabled={busy}
+          accessibilityLabel="Kırpmadan kullan"
+          accessibilityRole="button"
+        >
+          <Text style={styles.skipCropText}>Kırpmadan kullan</Text>
+        </Pressable>
       </GestureHandlerRootView>
     </Modal>
   );
@@ -250,4 +261,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   confirmText: { color: '#000', fontSize: 14, fontWeight: '700' },
+  skipCropBtn: {
+    marginTop: 12,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+  },
+  skipCropText: { color: 'rgba(245,240,232,0.6)', fontSize: 13, fontWeight: '600' },
 });

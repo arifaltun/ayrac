@@ -144,6 +144,8 @@ export default function EditBookScreen() {
             <Pressable
               onPress={() => { console.log('[PhotoPicker] 0/6 sheet açılıyor (edit-book)'); setPickerVisible(true); }}
               style={{ position: 'relative' }}
+              accessibilityLabel="Kapak fotoğrafı ekle veya değiştir"
+              accessibilityRole="button"
             >
               <BookCover title={title} color={color} coverImage={coverImage} size={76} radius={4} />
               <View style={[styles.coverEditBadge, { backgroundColor: t.surface }]}>
@@ -199,6 +201,9 @@ export default function EditBookScreen() {
                 <Pressable
                   key={k}
                   onPress={() => { Haptics.selectionAsync(); setStatus(k); }}
+                  accessibilityRole="radio"
+                  accessibilityLabel={lbl}
+                  accessibilityState={{ selected: status === k }}
                   style={[
                     styles.statusBtn,
                     { borderColor: status === k ? t.primary : t.border, backgroundColor: status === k ? t.primarySoft : t.bgSoft },

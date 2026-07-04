@@ -5,7 +5,7 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,7 +13,6 @@ import { useRouter } from 'expo-router';
 import { fonts } from '@/constants/tokens';
 import { BookCover } from '@/components/BookCover';
 
-const { width: W } = Dimensions.get('window');
 const CREAM = '#F5F0E8';
 const ACCENT = 'rgba(245,240,232,0.55)';
 const ACCENT_STRONG = CREAM;
@@ -27,8 +26,9 @@ const SAMPLE_BOOKS = [
 
 /* 01 · Kütüphane: gerçek bileşen stilleriyle mini liste */
 function LibraryMock() {
+  const { width } = useWindowDimensions();
   return (
-    <View style={[mock.frame, { transform: [{ rotate: '-2deg' }] }]}>
+    <View style={[mock.frame, { width: Math.min(width - 72, 330), transform: [{ rotate: '-2deg' }] }]}>
       {SAMPLE_BOOKS.map((b) => (
         <View key={b.title} style={mock.bookRow}>
           <BookCover color={b.color} size={38} title={b.title} />
@@ -48,8 +48,9 @@ function LibraryMock() {
 
 /* 02 · Ay sonu: özet ekranından kesit — hero + istatistikler */
 function WrappedMock() {
+  const { width } = useWindowDimensions();
   return (
-    <View style={[mock.frame, { transform: [{ rotate: '1.5deg' }], gap: 10 }]}>
+    <View style={[mock.frame, { width: Math.min(width - 72, 330), transform: [{ rotate: '1.5deg' }], gap: 10 }]}>
       <View style={mock.hero}>
         <Text style={mock.heroKicker}>MAYIS · WRAPPED</Text>
         <Text style={mock.heroTitle}>4 kitap, 1.286 sayfa</Text>
@@ -69,8 +70,9 @@ function WrappedMock() {
 
 /* 03 · Paylaş: editöryel paylaşım kartının küçültülmüş önizlemesi */
 function ShareMock() {
+  const { width } = useWindowDimensions();
   return (
-    <View style={[mock.shareCard, { transform: [{ rotate: '-1.5deg' }] }]}>
+    <View style={[mock.shareCard, { width: Math.min(width - 96, 300), transform: [{ rotate: '-1.5deg' }] }]}>
       <View style={mock.shareMastRow}>
         <Text style={mock.shareMast}>AYRAÇ · OKUMA GÜNLÜĞÜ</Text>
       </View>
@@ -119,9 +121,9 @@ const SLIDES: Slide[] = [
   },
 ];
 
-function SlideItem({ slide, height }: { slide: Slide; height: number }) {
+function SlideItem({ slide, height, width }: { slide: Slide; height: number; width: number }) {
   return (
-    <View style={{ width: W, height }}>
+    <View style={{ width, height }}>
       <View style={styles.visualArea}>
         {slide.visual === 'library' && <LibraryMock />}
         {slide.visual === 'wrapped' && <WrappedMock />}
@@ -140,6 +142,8 @@ function SlideItem({ slide, height }: { slide: Slide; height: number }) {
 export default function Onboarding() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  // iPad'de boyut/yön değişiminde sayfalama bozulmasın diye canlı genişlik
+  const { width: W } = useWindowDimensions();
   const [index, setIndex] = useState(0);
   const [listHeight, setListHeight] = useState(0);
   const listRef = useRef<FlatList>(null);
@@ -164,6 +168,8 @@ export default function Onboarding() {
       <Pressable
         style={[styles.skipBtn, { top: insets.top + 12 }]}
         onPress={goToName}
+        accessibilityRole="button"
+        accessibilityLabel="Tanıtımı geç"
       >
         <Text style={styles.skipText}>Geç</Text>
       </Pressable>
@@ -186,7 +192,7 @@ export default function Onboarding() {
             }}
             getItemLayout={(_, i) => ({ length: W, offset: W * i, index: i })}
             renderItem={({ item }) => (
-              <SlideItem slide={item} height={listHeight} />
+              <SlideItem slide={item} height={listHeight} width={W} />
             )}
             keyExtractor={(_, i) => i.toString()}
           />
@@ -209,7 +215,12 @@ export default function Onboarding() {
           ))}
         </View>
 
-        <Pressable style={styles.continueBtn} onPress={handleContinue}>
+        <Pressable
+          style={styles.continueBtn}
+          onPress={handleContinue}
+          accessibilityRole="button"
+          accessibilityLabel={index === SLIDES.length - 1 ? 'Başla' : 'Devam'}
+        >
           <Text style={styles.continueTxt}>
             {index === SLIDES.length - 1 ? 'Başla' : 'Devam'}
           </Text>
@@ -229,7 +240,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 24,
     zIndex: 10,
-    padding: 8,
+    paddingHorizontal: 8,
+    minHeight: 44,
+    minWidth: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   skipText: {
     color: 'rgba(255,255,255,0.6)',
@@ -311,7 +326,6 @@ const styles = StyleSheet.create({
 // Dokunulamaz, statik; hafif eğimle "vitrin" hissi.
 const mock = StyleSheet.create({
   frame: {
-    width: Math.min(W - 72, 330),
     gap: 8,
   },
   bookRow: {
@@ -355,7 +369,6 @@ const mock = StyleSheet.create({
   statValue: { color: CREAM, fontSize: 18, fontFamily: fonts.serif, letterSpacing: -0.4 },
   statLabel: { color: 'rgba(245,240,232,0.4)', fontSize: 8, fontWeight: '700', letterSpacing: 1.2 },
   shareCard: {
-    width: Math.min(W - 96, 300),
     backgroundColor: '#F4EEE2',
     borderRadius: 14,
     padding: 18,

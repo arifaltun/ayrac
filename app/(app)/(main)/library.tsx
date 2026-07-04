@@ -130,11 +130,14 @@ function ReviewRow({ book }: { book: Book }) {
         <Pressable
           onPress={() => router.push({ pathname: '/edit-book' as any, params: { id: book.id } })}
           style={[styles.reviewEditBtn, { backgroundColor: t.bgSoft }]}
+          hitSlop={6}
+          accessibilityLabel="Notu düzenle"
+          accessibilityRole="button"
         >
           <Ionicons name="create-outline" size={13} color={t.muted} />
         </Pressable>
       </View>
-      <Text style={[styles.reviewText, { color: t.mutedStrong }]}>
+      <Text style={[styles.reviewText, { color: t.muted }]}>
         {preview}
       </Text>
       {book.review!.length > 120 && (
@@ -181,6 +184,10 @@ function RecommendationCard({ rec, onAdd, added }: {
       <Pressable
         onPress={() => !added && onAdd(rec)}
         style={[recStyles.addBtn, { backgroundColor: added ? t.bgSoft : t.primary, borderColor: added ? t.border : t.primary }]}
+        hitSlop={8}
+        accessibilityLabel={added ? `${rec.title} eklendi` : `${rec.title} kitabını okuma listesine ekle`}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: added }}
       >
         <Ionicons name={added ? 'checkmark' : 'add'} size={14} color={added ? t.muted : '#000'} />
       </Pressable>
@@ -786,6 +793,7 @@ export default function LibraryScreen() {
           <Pressable
             style={[styles.iconBtn, { backgroundColor: t.surface, borderColor: reminder.enabled ? t.primary : t.border }]}
             onPress={openReminderModal}
+            hitSlop={6}
             accessibilityLabel={reminder.enabled ? 'Günlük hatırlatıcıyı düzenle' : 'Günlük hatırlatıcı kur'}
             accessibilityRole="button"
           >
@@ -794,6 +802,7 @@ export default function LibraryScreen() {
           <Pressable
             style={[styles.iconBtn, { backgroundColor: t.surface, borderColor: t.border }]}
             onPress={() => setSettingsVisible(true)}
+            hitSlop={6}
             accessibilityLabel="Ayarlar"
             accessibilityRole="button"
           >
@@ -805,6 +814,10 @@ export default function LibraryScreen() {
                 key={v}
                 onPress={() => setView(v)}
                 style={[styles.viewBtn, view === v && { backgroundColor: t.bgSoft }]}
+                hitSlop={{ top: 10, bottom: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel={v === 'monthly' ? 'Aylık görünüm' : 'Yıllık görünüm'}
+                accessibilityState={{ selected: view === v }}
               >
                 <Text style={[styles.viewBtnText, { color: view === v ? t.fg : t.muted }]}>
                   {v === 'monthly' ? 'Aylık' : 'Yıllık'}

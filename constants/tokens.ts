@@ -40,8 +40,10 @@ export const ayracTokens: Record<'light' | 'dark', ThemeTokens> = {
     surface:      '#0e0e0e',
     surface2:     '#151515',
     fg:           '#F5F0E8',
-    muted:        'rgba(245,240,232,0.45)',
-    mutedStrong:  'rgba(245,240,232,0.18)',
+    // muted metin için (0.50 → siyah üstünde ~4.9:1, WCAG AA);
+    // mutedStrong YALNIZCA dekoratif ikon/placeholder için — metinde kullanma (AA altı)
+    muted:        'rgba(245,240,232,0.50)',
+    mutedStrong:  'rgba(245,240,232,0.35)',
     border:       '#1c1c1c',
     borderStrong: '#262626',
     primary:      '#F5F0E8',

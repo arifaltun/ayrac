@@ -436,6 +436,10 @@ export default function WrappedScreen() {
                 setView(v);
               }}
               style={[styles.viewBtn, view === v && { backgroundColor: t.bgSoft }]}
+              hitSlop={{ top: 10, bottom: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel={v === 'monthly' ? 'Aylık görünüm' : 'Yıllık görünüm'}
+              accessibilityState={{ selected: view === v }}
             >
               <Text style={[styles.viewBtnText, { color: view === v ? t.fg : t.muted }]}>
                 {v === 'monthly' ? 'Aylık' : 'Yıllık'}

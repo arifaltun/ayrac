@@ -163,7 +163,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
             </ScalePressable>
 
             <Pressable onPress={dismiss} style={styles.dismissBtn} accessibilityRole="button">
-              <Text style={[styles.dismissText, { color: t.mutedStrong }]}>Belki sonra</Text>
+              <Text style={[styles.dismissText, { color: t.muted }]}>Belki sonra</Text>
             </Pressable>
           </View>
         </View>

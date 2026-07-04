@@ -17,11 +17,13 @@ export default function SplashScreen() {
   const router = useRouter();
   const [quote, setQuote] = useState<Quote | null>(null);
   const targetRef = useRef<'/(onboarding)' | '/(app)/(main)/library'>('/(onboarding)');
+  const targetReadyRef = useRef(false);
   const navigatedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const continueToApp = () => {
-    if (navigatedRef.current) return;
+    // Storage okuması bitmeden dokunulursa dönen kullanıcı onboarding'e düşerdi
+    if (navigatedRef.current || !targetReadyRef.current) return;
     navigatedRef.current = true;
     router.replace(targetRef.current as any);
   };
@@ -44,9 +46,11 @@ export default function SplashScreen() {
     logoOpacity.value = withTiming(1, { duration: 500, easing: easeOut });
     logoY.value = withTiming(0, { duration: 500, easing: easeOut });
 
-    AsyncStorage.getItem('@ayrac_has_entered').then((v) => {
-      if (v === 'true') targetRef.current = '/(app)/(main)/library';
-    });
+    AsyncStorage.getItem('@ayrac_has_entered')
+      .then((v) => {
+        if (v === 'true') targetRef.current = '/(app)/(main)/library';
+      })
+      .finally(() => { targetReadyRef.current = true; });
 
     pickQuote().then((q) => {
       setQuote(q);
@@ -72,7 +76,13 @@ export default function SplashScreen() {
     : '';
 
   return (
-    <Pressable style={styles.container} onPress={continueToApp}>
+    <Pressable
+      style={styles.container}
+      onPress={continueToApp}
+      accessibilityRole="button"
+      accessibilityLabel="Devam et"
+      accessibilityHint="Alıntıyı geçip uygulamayı açar"
+    >
       <Animated.View style={[styles.logoRow, logoAnim]}>
         <View style={styles.logoMark}>
           <Ionicons name="bookmark" size={14} color="#000" />
@@ -84,6 +94,7 @@ export default function SplashScreen() {
         <Animated.View style={[styles.quoteContainer, quoteAnim]}>
           <Text style={styles.quoteText}>“{quote.text}”</Text>
           <Text style={styles.authorText}>{attribution}</Text>
+          <Text style={styles.skipHint}>dokun ve geç</Text>
         </Animated.View>
       )}
     </Pressable>
@@ -134,5 +145,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.serifRegular,
     letterSpacing: 0.2,
+  },
+  skipHint: {
+    color: 'rgba(245,240,232,0.35)',
+    fontSize: 12,
+    letterSpacing: 0.4,
+    marginTop: 8,
   },
 });

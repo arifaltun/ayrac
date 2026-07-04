@@ -82,7 +82,7 @@ export default function NameScreen() {
             accessibilityRole="button"
             accessibilityLabel="İsimsiz devam et"
           >
-            <Text style={[styles.skipText, { color: t.mutedStrong }]}>İsimsiz devam et</Text>
+            <Text style={[styles.skipText, { color: t.muted }]}>İsimsiz devam et</Text>
           </Pressable>
         </View>
       </View>
