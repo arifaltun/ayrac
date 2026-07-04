@@ -63,12 +63,15 @@ export default function NameScreen() {
         </View>
 
         <View style={styles.footer}>
+          {/* İsim boşken "Başla" ile "İsimsiz devam et" aynı işi yapardı — tek yol kalsın diye pasif */}
           <ScalePressable
             scale={0.97}
-            style={[styles.submit, { backgroundColor: t.fg }]}
+            style={[styles.submit, { backgroundColor: t.fg, opacity: name.trim() ? 1 : 0.35 }]}
             onPress={() => enter(true)}
+            disabled={!name.trim()}
             accessibilityLabel="Başla"
             accessibilityRole="button"
+            accessibilityState={{ disabled: !name.trim() }}
           >
             <Text style={[styles.submitText, { color: t.bg, fontFamily: fonts.serifMedium }]}>Başla</Text>
           </ScalePressable>

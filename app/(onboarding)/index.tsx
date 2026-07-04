@@ -144,7 +144,7 @@ export default function Onboarding() {
   const [listHeight, setListHeight] = useState(0);
   const listRef = useRef<FlatList>(null);
 
-  const goToAuth = () => router.replace('/(auth)/register');
+  const goToName = () => router.replace('/(onboarding)/name' as any);
 
   const handleContinue = () => {
     if (index < SLIDES.length - 1) {
@@ -152,7 +152,7 @@ export default function Onboarding() {
       listRef.current?.scrollToIndex({ index: next, animated: true });
       setIndex(next);
     } else {
-      goToAuth();
+      goToName();
     }
   };
 
@@ -163,7 +163,7 @@ export default function Onboarding() {
       {/* Skip button */}
       <Pressable
         style={[styles.skipBtn, { top: insets.top + 12 }]}
-        onPress={goToAuth}
+        onPress={goToName}
       >
         <Text style={styles.skipText}>Geç</Text>
       </Pressable>
