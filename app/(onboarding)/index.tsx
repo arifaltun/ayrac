@@ -124,7 +124,13 @@ const SLIDES: Slide[] = [
 function SlideItem({ slide, height, width }: { slide: Slide; height: number; width: number }) {
   return (
     <View style={{ width, height }}>
-      <View style={styles.visualArea}>
+      {/* Mock'lar dekoratif: içlerindeki "Devam"/"Bitti" rozetleri VoiceOver'a
+          okunup gerçek butonlarla karışmasın */}
+      <View
+        style={styles.visualArea}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
         {slide.visual === 'library' && <LibraryMock />}
         {slide.visual === 'wrapped' && <WrappedMock />}
         {slide.visual === 'share' && <ShareMock />}

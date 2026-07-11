@@ -1,0 +1,11 @@
+appId: host.exp.Exponent
+---
+- openLink: exp://192.168.1.215:8081/--/wrapped
+- extendedWaitUntil:
+    visible: "OKUNAN KİTAPLAR"
+    timeout: 45000
+- takeScreenshot: test-screenshots/s4-wrapped
+- tapOn: "Tutunamayanlar"
+- waitForAnimationToEnd
+- takeScreenshot: test-screenshots/s4-paywall
+- tapOn: "Belki sonra"

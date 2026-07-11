@@ -1,0 +1,17 @@
+appId: host.exp.Exponent
+---
+- openLink: exp://192.168.1.215:8081
+- extendedWaitUntil:
+    visible: "Devam"
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: test-screenshots/s5-onboarding-1
+# Ekranda iki "Devam" metni var (mock rozeti + buton) — butona nokta ile dokun
+- tapOn:
+    point: 79%,92%
+- waitForAnimationToEnd
+- takeScreenshot: test-screenshots/s5-onboarding-2
+- tapOn:
+    point: 79%,92%
+- waitForAnimationToEnd
+- takeScreenshot: test-screenshots/s5-onboarding-3

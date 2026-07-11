@@ -2,13 +2,14 @@ import { useRef, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Pressable, Dimensions,
   ActivityIndicator, Image, ScrollView, Platform, Alert, Linking,
+  NativeSyntheticEvent, TextLayoutEventData, StyleProp, TextStyle,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Circle, Defs, Path, Pattern, Rect } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Path, Pattern, Rect, Stop } from 'react-native-svg';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
@@ -58,7 +59,9 @@ function formatDuration(seconds: number): string {
   if (seconds <= 0) return '—';
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h} sa ${m} dk`;
+  // Sıfır birimler gizli: "2 sa 0 dk" değil "2 sa"
+  if (h > 0 && m > 0) return `${h} sa ${m} dk`;
+  if (h > 0) return `${h} sa`;
   if (m > 0) return `${m} dk`;
   return `${seconds} sn`;
 }
@@ -84,6 +87,58 @@ const NO_WORD_BREAK = { adjustsFontSizeToFit: true, minimumFontScale: 0.55 } as 
 // Android'de adjustsFontSizeToFit + sabit lineHeight, küçülen metni dikey kırpıyor
 // (bilinen RN davranışı) — Android'de satır yüksekliği serbest bırakılır
 const fitLineHeight = (lh: number) => (Platform.OS === 'android' ? undefined : lh);
+
+// adjustsFontSizeToFit tek başına kelime bölünmesini ENGELLEMEZ: satır sayısına
+// sığdı anda durur, uzun tek kelimeyi ("Tutunamayanlar") ortadan kırar.
+// Bu bileşen onTextLayout ile satır sonlarını denetler; bir satır kelime
+// ortasında bitiyorsa fontu kademeli küçültür — en uzun kelime tek satıra
+// sığana dek (taban: %50). Küçülme tek yönlü olduğu için döngü yakınsar.
+function NoBreakText({ text, baseSize, baseLineHeight, numberOfLines, style }: {
+  text: string;
+  baseSize: number;
+  baseLineHeight?: number;
+  numberOfLines: number;
+  style?: StyleProp<TextStyle>;
+}) {
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    setScale(1);
+  }, [text, baseSize, numberOfLines]);
+
+  const onTextLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
+    const lines = e.nativeEvent.lines;
+    if (!lines || lines.length < 2) return;
+    for (let i = 0; i < lines.length - 1; i++) {
+      const cur = lines[i].text;
+      const next = lines[i + 1].text;
+      // Satır boşlukla bitmiyor ve sonraki satır boşlukla başlamıyorsa kelime bölünmüş
+      if (cur && next && !/[\s-]$/.test(cur) && !/^\s/.test(next)) {
+        setScale((sc) => (sc > 0.5 ? Math.max(0.5, sc - 0.06) : sc));
+        return;
+      }
+    }
+  };
+
+  const size = Math.round(baseSize * scale);
+  return (
+    <Text
+      numberOfLines={numberOfLines}
+      adjustsFontSizeToFit
+      minimumFontScale={0.55}
+      onTextLayout={onTextLayout}
+      style={[
+        style,
+        {
+          fontSize: size,
+          lineHeight: baseLineHeight ? fitLineHeight(Math.round(baseLineHeight * scale)) : undefined,
+        },
+      ]}
+    >
+      {text}
+    </Text>
+  );
+}
 
 // İnce grain dokusu (SVG pattern) — düz dijital zemini kırar
 function Grain({ color, opacity, id }: { color: string; opacity: number; id: string }) {
@@ -128,27 +183,45 @@ function CoverArt({ title, accentColor, coverImage, w, lightShadow }: {
             {/* Sırt süslemesi: üst/alt ince çizgiler */}
             <View style={{ position: 'absolute', top: h * 0.08, left: spineW + 5, right: 6, height: 1, backgroundColor: 'rgba(255,255,255,0.4)' }} />
             <View style={{ position: 'absolute', bottom: h * 0.08, left: spineW + 5, right: 6, height: 1, backgroundColor: 'rgba(255,255,255,0.4)' }} />
-            <Text
+            <NoBreakText
+              text={title}
               numberOfLines={2}
-              {...NO_WORD_BREAK}
+              baseSize={Math.max(9, Math.round(w * 0.15))}
+              baseLineHeight={Math.max(11, Math.round(w * 0.19))}
               style={{
                 transform: [{ rotate: '90deg' }],
                 width: h * 0.78,
                 textAlign: 'center',
                 fontFamily: fonts.serifMedium,
-                fontSize: Math.max(9, Math.round(w * 0.15)),
-                lineHeight: fitLineHeight(Math.max(11, Math.round(w * 0.19))),
                 color: 'rgba(255,255,255,0.92)',
                 letterSpacing: 0.4,
               }}
-            >
-              {title}
-            </Text>
+            />
           </View>
         )}
         <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: spineW, backgroundColor: 'rgba(0,0,0,0.22)' }} />
         <View style={{ position: 'absolute', left: spineW, top: 0, bottom: 0, width: 1, backgroundColor: 'rgba(255,255,255,0.18)' }} />
       </View>
+    </View>
+  );
+}
+
+// Yatay kaydırılabilir satırın sağ kenarında zemine karışan fade —
+// "devamı var" ipucu. Ekran zemini #000 olduğu için gradient siyaha akar.
+// Svg kendi pointerEvents'ine güvenilmez (dokunuşu yutabiliyor) —
+// hit-testing'i kesin dışlamak için pointerEvents="none" View'la sarılır.
+function EdgeFade({ width = 28, id }: { width?: number; id: string }) {
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width }}>
+      <Svg width={width} height="100%">
+        <Defs>
+          <LinearGradient id={id} x1="0" y1="0" x2="1" y2="0">
+            <Stop offset="0" stopColor="#000" stopOpacity="0" />
+            <Stop offset="1" stopColor="#000" stopOpacity="1" />
+          </LinearGradient>
+        </Defs>
+        <Rect width="100%" height="100%" fill={`url(#${id})`} />
+      </Svg>
     </View>
   );
 }
@@ -221,13 +294,13 @@ function EditorialCard({ format, title, author, rating, accentColor, coverImage,
             <View style={{ flex: 1 }}>
               <Text style={[s.kicker, { color: accentColor }]}>BİTİRDİM</Text>
               <View style={{ width: 26, height: 2, backgroundColor: accentColor, marginTop: 5, marginBottom: 12 }} />
-              <Text
-                style={{ fontFamily: fonts.serif, color: ink, fontSize: isStory ? 30 : 20, lineHeight: fitLineHeight(isStory ? 36 : 25), letterSpacing: -0.5 }}
+              <NoBreakText
+                text={title}
                 numberOfLines={isStory ? 4 : 2}
-                {...NO_WORD_BREAK}
-              >
-                {title}
-              </Text>
+                baseSize={isStory ? 30 : 20}
+                baseLineHeight={isStory ? 36 : 25}
+                style={{ fontFamily: fonts.serif, color: ink, letterSpacing: -0.5 }}
+              />
               <Text style={{ fontFamily: fonts.serifRegular, color: sub, fontSize: isStory ? 14 : 12, marginTop: 8 }} numberOfLines={1}>
                 {author}
               </Text>
@@ -314,13 +387,13 @@ function JournalCard({ format, title, author, rating, accentColor, coverImage, d
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <View style={{ flexDirection: 'row', gap: 16, alignItems: 'flex-start' }}>
             <View style={{ flex: 1 }}>
-              <Text
-                style={{ fontFamily: fonts.serif, color: ink, fontSize: isStory ? 24 : 17, lineHeight: fitLineHeight(isStory ? 30 : 21), letterSpacing: -0.4 }}
+              <NoBreakText
+                text={title}
                 numberOfLines={isStory ? 3 : 2}
-                {...NO_WORD_BREAK}
-              >
-                {title}
-              </Text>
+                baseSize={isStory ? 24 : 17}
+                baseLineHeight={isStory ? 30 : 21}
+                style={{ fontFamily: fonts.serif, color: ink, letterSpacing: -0.4 }}
+              />
               <Text style={{ fontFamily: fonts.serifRegular, color: sub, fontSize: isStory ? 13 : 11, marginTop: 6 }} numberOfLines={1}>
                 {author}
               </Text>
@@ -403,9 +476,12 @@ function QuoteCard({ format, title, author, rating, accentColor, coverImage, rev
             </Text>
           )}
           <View style={{ width: 32, height: 2, backgroundColor: accentColor, marginTop: isStory ? 22 : 12, opacity: 0.85 }} />
-          <Text style={{ fontFamily: fonts.serifRegular, color: ink, fontSize: isStory ? 14 : 12, marginTop: 10 }} numberOfLines={1} {...NO_WORD_BREAK}>
-            {title}
-          </Text>
+          <NoBreakText
+            text={title}
+            numberOfLines={1}
+            baseSize={isStory ? 14 : 12}
+            style={{ fontFamily: fonts.serifRegular, color: ink, marginTop: 10 }}
+          />
           <Text style={{ color: sub, fontSize: isStory ? 12 : 10, marginTop: 3 }} numberOfLines={1}>{author}</Text>
         </View>
 
@@ -467,13 +543,13 @@ function StatsCard({ format, title, author, rating, accentColor, coverImage, dat
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
-              <Text
-                style={{ fontFamily: fonts.serif, color: cream, fontSize: isStory ? 26 : 18, lineHeight: fitLineHeight(isStory ? 32 : 23), letterSpacing: -0.5 }}
+              <NoBreakText
+                text={title}
                 numberOfLines={isStory ? 3 : 2}
-                {...NO_WORD_BREAK}
-              >
-                {title}
-              </Text>
+                baseSize={isStory ? 26 : 18}
+                baseLineHeight={isStory ? 32 : 23}
+                style={{ fontFamily: fonts.serif, color: cream, letterSpacing: -0.5 }}
+              />
               <Text style={{ color: creamSub, fontSize: isStory ? 12 : 10, marginTop: 6 }} numberOfLines={1}>{author}</Text>
               {rating > 0 && (
                 <View style={{ marginTop: 8 }}>
@@ -524,17 +600,16 @@ function MinimalCard({ format, title, author, rating, accentColor, coverImage, d
       <View style={{ flex: 1, padding: isStory ? 28 : 22, alignItems: 'center', justifyContent: 'center' }}>
         <CoverArt title={title} accentColor={accentColor} coverImage={coverImage} w={isStory ? 128 : 84} />
         <Text style={[s.kicker, { color: accentColor, marginTop: isStory ? 30 : 16 }]}>BİTİRDİM</Text>
-        <Text
+        <NoBreakText
+          text={title}
+          numberOfLines={2}
+          baseSize={isStory ? 26 : 18}
+          baseLineHeight={isStory ? 33 : 23}
           style={{
             fontFamily: fonts.serif, color: cream, textAlign: 'center',
-            fontSize: isStory ? 26 : 18, lineHeight: fitLineHeight(isStory ? 33 : 23),
             letterSpacing: -0.5, marginTop: 10, maxWidth: '88%',
           }}
-          numberOfLines={2}
-          {...NO_WORD_BREAK}
-        >
-          {title}
-        </Text>
+        />
         <Text style={{ color: creamSub, fontSize: isStory ? 12 : 10, marginTop: 6 }} numberOfLines={1}>{author}</Text>
         {rating > 0 && (
           <View style={{ marginTop: 12 }}>
@@ -781,7 +856,14 @@ export default function ShareBookScreen() {
 
       {/* Customization */}
       <View style={s.customPanel}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+        {/* Satır ekrana sığmıyor; sağdaki fade kaydırılabilirliği söylüyor */}
+        <View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ flexGrow: 0 }}
+          contentContainerStyle={{ paddingRight: 32 }}
+        >
           {VARIANTS.map(({ key, label }) => {
             const locked = (key === 'quote' && !quoteAvailable) || (key === 'stats' && !statsAvailable);
             return (
@@ -805,8 +887,16 @@ export default function ShareBookScreen() {
             );
           })}
         </ScrollView>
+        <EdgeFade id="fade-variants" />
+        </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.paletteScroll}>
+        <View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={s.paletteScroll}
+          contentContainerStyle={{ paddingRight: 32 }}
+        >
           {PALETTE.map((c) => (
             <Pressable
               key={c}
@@ -817,6 +907,8 @@ export default function ShareBookScreen() {
             </Pressable>
           ))}
         </ScrollView>
+        <EdgeFade id="fade-palette" />
+        </View>
       </View>
 
       {/* Actions */}

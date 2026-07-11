@@ -1,0 +1,11 @@
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible: "OKUNAN KİTAPLAR"
+    timeout: 15000
+# Kitap satırına nokta ile dokun (metin eşleşmesi flake yaptı)
+- tapOn:
+    point: 50%, 58%
+- waitForAnimationToEnd
+- takeScreenshot: test-screenshots/s4-paywall
+- tapOn: "Belki sonra"

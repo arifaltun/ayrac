@@ -41,3 +41,6 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Test turu ekran görüntüleri (üretilebilir çıktı)
+test-screenshots/*.png
