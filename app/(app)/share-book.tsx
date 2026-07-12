@@ -16,6 +16,7 @@ import * as MediaLibrary from 'expo-media-library';
 import { useBooks } from '@/context/BooksContext';
 import { usePro } from '@/context/ProContext';
 import { fonts } from '@/constants/tokens';
+import { computeReaderIdentity, DEFAULT_IDENTITY } from '@/utils/readerIdentity';
 
 const { width: W } = Dimensions.get('window');
 const CARD_W = W - 48;
@@ -53,6 +54,8 @@ type CardProps = {
   pages: number;
   genre: string;
   stats: BookStats;
+  // Bitirilen ayın Okur Kimliği ("Gece Okuru" vb.) — hak edilmemişse undefined
+  identity?: string;
 };
 
 function formatDuration(seconds: number): string {
@@ -272,7 +275,7 @@ function Ribbon({ color, left = 26 }: { color: string; left?: number }) {
 
 /* ---------- 1 · EDİTÖRYEL — dergi sayfası ---------- */
 
-function EditorialCard({ format, title, author, rating, accentColor, coverImage, review, dateLabel }: CardProps) {
+function EditorialCard({ format, title, author, rating, accentColor, coverImage, review, dateLabel, identity }: CardProps) {
   const isStory = format === 'story';
   const ink = '#221b12';
   const sub = 'rgba(34,27,18,0.55)';
@@ -332,7 +335,15 @@ function EditorialCard({ format, title, author, rating, accentColor, coverImage,
         <View>
           <View style={{ height: 1, backgroundColor: ink, opacity: 0.35, marginBottom: 10 }} />
           <View style={s.rowBetween}>
-            <AyracBadge fg={ink} bg="#F4EEE2" />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <AyracBadge fg={ink} bg="#F4EEE2" />
+              {/* Okur Kimliği — künye satırında sessiz bir imza detayı */}
+              {identity && (
+                <Text style={{ color: faint, fontSize: 9, letterSpacing: 1.5, fontWeight: '600' }}>
+                  · {identity.toUpperCase()}
+                </Text>
+              )}
+            </View>
             <Text style={{ color: faint, fontSize: 9, letterSpacing: 2, fontWeight: '600' }}>SAYFA · SON</Text>
           </View>
         </View>
@@ -352,7 +363,7 @@ function JournalField({ label, sub, children }: { label: string; sub: string; ch
   );
 }
 
-function JournalCard({ format, title, author, rating, accentColor, coverImage, dateLabel, pages, genre }: CardProps) {
+function JournalCard({ format, title, author, rating, accentColor, coverImage, dateLabel, pages, genre, identity }: CardProps) {
   const isStory = format === 'story';
   const ink = '#2a2014';
   const sub = 'rgba(42,32,20,0.5)';
@@ -424,7 +435,15 @@ function JournalCard({ format, title, author, rating, accentColor, coverImage, d
         </View>
 
         <View style={[s.rowBetween, { alignItems: 'flex-end' }]}>
-          <AyracBadge fg={ink} bg="#EFE5CF" />
+          <View style={{ gap: 5 }}>
+            <AyracBadge fg={ink} bg="#EFE5CF" />
+            {/* Okur Kimliği — defter künyesine düşülmüş küçük bir kayıt */}
+            {identity && (
+              <Text style={{ color: sub, fontSize: 8, letterSpacing: 1.5, fontWeight: '700' }}>
+                {identity.toUpperCase()}
+              </Text>
+            )}
+          </View>
           <Stamp color={accentColor} date={dateLabel} />
         </View>
       </View>
@@ -513,7 +532,7 @@ function StatBlock({ value, label, accent, cream }: { value: string; label: stri
   );
 }
 
-function StatsCard({ format, title, author, rating, accentColor, coverImage, dateLabel, stats }: CardProps) {
+function StatsCard({ format, title, author, rating, accentColor, coverImage, dateLabel, stats, identity }: CardProps) {
   const isStory = format === 'story';
   const cream = '#F5F0E8';
   const creamSub = 'rgba(245,240,232,0.55)';
@@ -574,6 +593,20 @@ function StatsCard({ format, title, author, rating, accentColor, coverImage, dat
               </View>
             ))}
           </View>
+
+          {/* Okur Kimliği — ayın verisinden türeyen unvan, hak edilmişse */}
+          {identity && (
+            <View style={{
+              marginTop: isStory ? 22 : 12,
+              borderTopWidth: 1, borderTopColor: 'rgba(245,240,232,0.15)',
+              paddingTop: isStory ? 18 : 10, gap: 3,
+            }}>
+              <Text style={{ color: creamSub, fontSize: 8, letterSpacing: 1.8, fontWeight: '700' }}>OKUR KİMLİĞİ</Text>
+              <Text style={{ fontFamily: fonts.serif, color: accentColor, fontSize: isStory ? 20 : 15, letterSpacing: -0.3 }}>
+                {identity}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={s.rowBetween}>
@@ -730,6 +763,12 @@ export default function ShareBookScreen() {
     avgMinutes: totalSeconds > 0 ? Math.max(1, Math.round(totalSeconds / 60 / days)) : 0,
   };
 
+  // Okur Kimliği: kitabın bitirildiği ayın verisinden. Kartta yalnızca hak
+  // edilmiş bir unvan imza olur — jenerik "Okur" düşüşü kartta gürültü yapar
+  const finishDate = new Date(book.finishedAt ?? book.createdAt);
+  const monthIdentity = computeReaderIdentity(books, sessions, finishDate.getMonth(), finishDate.getFullYear());
+  const cardIdentity = monthIdentity && monthIdentity !== DEFAULT_IDENTITY ? monthIdentity : undefined;
+
   // Alıntı varyantı: alıntı da not da yoksa kilitli görünür
   const quoteAvailable = !!(book.quote || book.review);
   // İstatistik varyantı: en az 2 gerçek veri yoksa kilitli
@@ -847,6 +886,7 @@ export default function ShareBookScreen() {
               pages={book.pages}
               genre={book.genre}
               stats={stats}
+              identity={cardIdentity}
             />
           </ViewShot>
         </Animated.View>

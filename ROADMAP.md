@@ -92,6 +92,16 @@ Her görev tamamlandığında `[ ]` → `[x]` yapılacak.
   ((auth) grubu kaldırıldı, FlatList/memo, bildirim kanalı, console temizliği).
   Kalan 6 açık madde AUDIT.md sonunda listeli; en önemlisi kapakların çevrimdışı
   önbelleklenmesi.
+- [x] **Okur Kimliği** — aylık seans + kitap verisinden türeyen tek unvan
+  (`utils/readerIdentity.ts`, saf fonksiyon; `scripts/verifyReaderIdentity.ts`
+  ile 17 senaryoda doğrulandı). 12 kimlik nadirlik sırasıyla: Gece Okuru,
+  Şafak Okuru, Maratoncu, İstikrarlı, Çeşnici, Tuğla Deviren, Klasik Avcısı,
+  Gezgin Okur, Sadık Okur, Not Düşen, Zor Beğenen, Cömert Puancı; hiçbiri
+  tutmazsa "Okur", veri yoksa satır gizli. Wrapped hero'sunda "Bu ayın kimliği"
+  satırı (aylık görünümde); paylaşım kartlarında İstatistik'e kimlik satırı,
+  Editöryel ve Günlük'e künye imzası (jenerik "Okur" kartta gösterilmez).
+  Klasik Avcısı için `Book.firstPublishYear` alanı eklendi (Open Library
+  `first_publish_year`, katalogdan eklenen kitaplarda dolar).
 
 ---
 

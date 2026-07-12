@@ -15,6 +15,7 @@ import { fonts } from '@/constants/tokens';
 import { BookCover } from '@/components/BookCover';
 import { RatingText } from '@/components/RatingText';
 import { ProFeatureGate } from '@/components/ProFeatureGate';
+import { computeReaderIdentity } from '@/utils/readerIdentity';
 
 const MONTHS_TR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -419,6 +420,12 @@ export default function WrappedScreen() {
 
   const periodLabel = view === 'monthly' ? `${MONTHS_TR[monthIndex]} ${year}` : `${year}`;
 
+  // Okur Kimliği ay bazlı tanımlı — yıllık görünümde gösterilmez.
+  // Ay değişince o ayın verisinden yeniden hesaplanır; veri yoksa null (satır gizli)
+  const readerIdentity = view === 'monthly'
+    ? computeReaderIdentity(books, sessions, monthIndex, year)
+    : null;
+
   const handleExportCSV = async () => {
     if (!isPro) { showPaywall('export'); return; }
     if (finished.length === 0) return;
@@ -539,6 +546,12 @@ export default function WrappedScreen() {
               {topGenre && (
                 <Text style={[styles.heroDesc, { color: 'rgba(0,0,0,0.6)' }]}>
                   En çok okunan tür: {topGenre}
+                </Text>
+              )}
+              {readerIdentity && (
+                <Text style={[styles.heroIdentity, { color: 'rgba(0,0,0,0.6)', fontFamily: fonts.serifRegular }]}>
+                  Bu ayın kimliği:{' '}
+                  <Text style={{ fontFamily: fonts.serifMedium, color: '#000' }}>{readerIdentity}</Text>
                 </Text>
               )}
             </View>
@@ -735,6 +748,7 @@ const styles = StyleSheet.create({
   heroTitle: { fontSize: 24, fontWeight: '700', letterSpacing: -0.5, lineHeight: 30, marginTop: 4 },
   heroReadingTime: { fontSize: 15, fontWeight: '700', marginTop: 6 },
   heroDesc: { fontSize: 12, marginTop: 2 },
+  heroIdentity: { fontSize: 13, letterSpacing: -0.1, marginTop: 8 },
   statsRow: { flexDirection: 'row', gap: 8 },
   statBox: { flex: 1, borderRadius: 12, padding: 12, borderWidth: 1, alignItems: 'center', gap: 4 },
   statValue: { fontSize: 24, letterSpacing: -0.5 },

@@ -29,6 +29,7 @@ type OLResult = {
   title: string;
   author: string;
   pages: number;
+  firstPublishYear: number | null;
   coverId: number | null;
   coverUrl: string | null;
 };
@@ -49,13 +50,14 @@ async function fetchWithTimeout(url: string, init?: RequestInit, timeoutMs = 800
 }
 
 async function searchOpenLibrary(query: string): Promise<OLResult[]> {
-  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=title,author_name,number_of_pages_median,cover_i&limit=5`;
+  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=title,author_name,number_of_pages_median,first_publish_year,cover_i&limit=5`;
   const res = await fetchWithTimeout(url);
   const json = await res.json();
   return (json.docs ?? []).map((doc: any) => ({
     title: doc.title ?? '',
     author: normalizeAuthorName(doc.author_name?.[0] ?? ''),
     pages: doc.number_of_pages_median ?? 0,
+    firstPublishYear: doc.first_publish_year ?? null,
     coverId: doc.cover_i ?? null,
     coverUrl: doc.cover_i ? coverUrlFromId(doc.cover_i) : null,
   }));
@@ -79,7 +81,7 @@ async function resolveCoverByISBN(isbn: string, coverId: number | null): Promise
 }
 
 async function lookupByISBN(isbn: string): Promise<OLResult | null> {
-  const url = `https://openlibrary.org/search.json?isbn=${isbn}&fields=title,author_name,number_of_pages_median,cover_i&limit=1`;
+  const url = `https://openlibrary.org/search.json?isbn=${isbn}&fields=title,author_name,number_of_pages_median,first_publish_year,cover_i&limit=1`;
   const res = await fetchWithTimeout(url);
   const json = await res.json();
   const doc = json.docs?.[0];
@@ -89,6 +91,7 @@ async function lookupByISBN(isbn: string): Promise<OLResult | null> {
     title: doc.title ?? '',
     author: normalizeAuthorName(doc.author_name?.[0] ?? ''),
     pages: doc.number_of_pages_median ?? 0,
+    firstPublishYear: doc.first_publish_year ?? null,
     coverId,
     coverUrl: await resolveCoverByISBN(isbn, coverId),
   };
@@ -108,6 +111,8 @@ export default function AddBookScreen() {
   const [status, setStatus] = useState<Status>('reading');
   const [rating, setRating] = useState(0);
   const [color, setColor] = useState(BOOK_COLORS[0]);
+  // Katalogdan gelirse saklanır; elle girişte bilinmez kalır (Okur Kimliği için)
+  const [firstPublishYear, setFirstPublishYear] = useState<number | undefined>();
 
   const [results, setResults] = useState<OLResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -169,6 +174,7 @@ export default function AddBookScreen() {
     setTitle(item.title);
     setAuthor(item.author);
     if (item.pages > 0) setPages(String(item.pages));
+    setFirstPublishYear(item.firstPublishYear ?? undefined);
     // Kapak otomatik gelsin — kullanıcının kendi çektiği fotoğrafı ezme.
     // Otomatik kapak formda önizleme olarak görünür; "Değiştir" ile değiştirilebilir.
     // (setState updater içinde yan etki StrictMode'da çift çalışır — dışarıda koşullu)
@@ -269,6 +275,7 @@ export default function AddBookScreen() {
       author: author.trim(),
       pages: parseInt(pages) || 0,
       genre: normalizeGenre(genre),
+      firstPublishYear,
       status,
       rating: status === 'finished' ? rating : 0,
       color,

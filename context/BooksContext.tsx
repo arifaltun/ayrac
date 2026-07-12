@@ -11,6 +11,8 @@ export type Book = {
   status: 'reading' | 'finished' | 'want';
   color: string;
   genre: string;
+  // İlk baskı yılı (Open Library'den; Okur Kimliği "Klasik Avcısı" için)
+  firstPublishYear?: number;
   coverImage?: string;
   readingTime?: number;
   review?: string;
