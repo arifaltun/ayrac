@@ -18,6 +18,7 @@ import { BookCover } from '@/components/BookCover';
 import { RatingText } from '@/components/RatingText';
 import { ProFeatureGate } from '@/components/ProFeatureGate';
 import { usePro, PRO_PRICE_LABEL } from '@/context/ProContext';
+import { MONETIZATION_ENABLED } from '@/constants/features';
 import {
   loadReminderSettings, saveReminderSettings, scheduleReminder,
   cancelReminder, requestNotificationPermission, ReminderSettings,
@@ -625,7 +626,8 @@ export default function LibraryScreen() {
             <View style={[styles.handle, { backgroundColor: t.border }]} />
             <Text style={[styles.settingsTitle, { color: t.fg, fontFamily: fonts.serifMedium }]}>Ayarlar</Text>
 
-            {/* Pro status */}
+            {/* Pro status — monetizasyon kapalıyken bölüm tamamen gizli */}
+            {MONETIZATION_ENABLED && (<>
             {isPro ? (
               <View style={[styles.settingsRow, { borderColor: t.border }]}>
                 <View style={styles.settingsRowLeft}>
@@ -650,6 +652,7 @@ export default function LibraryScreen() {
             )}
 
             <View style={[styles.settingsDivider, { backgroundColor: t.border }]} />
+            </>)}
 
             {/* Theme */}
             <Pressable
@@ -690,8 +693,8 @@ export default function LibraryScreen() {
               </View>
             </Pressable>
 
-            {/* Yalnızca geliştirmede: Free/Pro deneyimleri arasında geçiş */}
-            {__DEV__ && (
+            {/* Yalnızca geliştirmede ve monetizasyon açıkken: Free/Pro deneyimleri arasında geçiş */}
+            {__DEV__ && MONETIZATION_ENABLED && (
               <Pressable
                 style={[styles.settingsRow, { borderColor: t.border }]}
                 onPress={() => { Haptics.selectionAsync(); toggleProForDev(); }}

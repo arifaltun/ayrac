@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { usePro, PaywallTrigger } from '@/context/ProContext';
 import { fonts } from '@/constants/tokens';
+import { MONETIZATION_ENABLED } from '@/constants/features';
 
 // Pro'ya özel bölümler için tek tip kilit.
 // children verilirse içerik soluk bir önizleme olarak altta durur (blur hissi),
@@ -16,7 +17,8 @@ export function ProFeatureGate({ trigger, title, description, children }: {
   const { t } = useTheme();
   const { isPro, showPaywall } = usePro();
 
-  if (isPro) return <>{children}</>;
+  // Monetizasyon kapalıyken kapı hiç çizilmez — içerik doğrudan gösterilir
+  if (!MONETIZATION_ENABLED || isPro) return <>{children}</>;
 
   const lockChip = (
     <View style={[styles.chip, { backgroundColor: t.surface, borderColor: t.borderStrong }]}>

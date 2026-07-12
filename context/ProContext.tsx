@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { fonts } from '@/constants/tokens';
+import { MONETIZATION_ENABLED } from '@/constants/features';
 import { useTheme } from '@/context/ThemeContext';
 import { ScalePressable } from '@/components/ScalePressable';
 
@@ -77,24 +78,27 @@ type ProContextValue = {
 };
 
 const ProContext = createContext<ProContextValue>({
-  isPro: false,
+  isPro: !MONETIZATION_ENABLED,
   showPaywall: () => {},
   toggleProForDev: () => {},
 });
 
 export function ProProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTheme();
-  const [isPro, setIsPro] = useState(false);
+  // Monetizasyon kapalıyken herkes Pro: kapılar açılır, paywall hiç kurulmaz
+  const [isPro, setIsPro] = useState(!MONETIZATION_ENABLED);
   const [visible, setVisible] = useState(false);
   const [trigger, setTrigger] = useState<PaywallTrigger>('book_limit');
 
   useEffect(() => {
+    if (!MONETIZATION_ENABLED) return;
     AsyncStorage.getItem(STORAGE_KEY).then((v) => {
       if (v === 'true') setIsPro(true);
     });
   }, []);
 
   const showPaywall = (tr: PaywallTrigger) => {
+    if (!MONETIZATION_ENABLED) return;
     setTrigger(tr);
     setVisible(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -112,9 +116,9 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
     setVisible(false);
   };
 
-  // __DEV__ dışında çağrılsa bile hiçbir şey yapmaz — UI zaten yalnızca DEV'de gösteriyor
+  // __DEV__ dışında veya monetizasyon kapalıyken hiçbir şey yapmaz — UI da göstermiyor
   const toggleProForDev = () => {
-    if (!__DEV__) return;
+    if (!__DEV__ || !MONETIZATION_ENABLED) return;
     setIsPro((prev) => {
       const next = !prev;
       AsyncStorage.setItem(STORAGE_KEY, next ? 'true' : 'false').catch(() => {});
@@ -128,6 +132,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
   return (
     <ProContext.Provider value={{ isPro, showPaywall, toggleProForDev }}>
       {children}
+      {MONETIZATION_ENABLED && (
       <Modal
         visible={visible}
         transparent
@@ -171,6 +176,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
           </View>
         </View>
       </Modal>
+      )}
     </ProContext.Provider>
   );
 }

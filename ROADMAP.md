@@ -102,14 +102,25 @@ Her görev tamamlandığında `[ ]` → `[x]` yapılacak.
   ile varyant zeminlerinin uyumu
 - [ ] **Web yayını** — `expo export` ile statik web çıktısı (app.json `web.output:
   "static"` hazır); tanıtım sayfası + tarayıcıda temel kullanım
-- [ ] **RevenueCat / IAP entegrasyonu** — gerçek abonelik (₺29,99/ay); "Pro'ya Geç"
-  şu an doğrudan Pro yapıyor, paywall'a satın alma/geri yükleme bağlanacak
+- [x] **v1 tamamen ücretsiz** — Free/Pro ayrımı kullanıcıdan kaldırıldı; tüm
+  özellikler herkese açık, 5 kitap limiti yok. Monetizasyon altyapısı
+  (ProContext, paywall, ProFeatureGate) silinmedi, `constants/features.ts`
+  içindeki `MONETIZATION_ENABLED = false` bayrağının arkasında uyuyor;
+  ileride yeni özelliklerle birlikte yeniden değerlendirilecek
+- [ ] **RevenueCat / IAP entegrasyonu** — *(monetizasyon yeniden açılırsa)*
+  gerçek abonelik (₺29,99/ay); "Pro'ya Geç" şu an doğrudan Pro yapıyor,
+  paywall'a satın alma/geri yükleme bağlanacak
 - [ ] **TestFlight** — EAS Build ile iOS dağıtımı; development build aynı zamanda
   Expo Go kısıtlarını da kaldırır (bildirimler, media library tam erişim)
 
 ---
 
-## Free vs Pro Model
+## Free vs Pro Model (uykuda)
+
+> **Not:** v1 tamamen ücretsiz yayınlanıyor. Aşağıdaki model uygulamada
+> `MONETIZATION_ENABLED = false` bayrağıyla devre dışı — kod duruyor,
+> kullanıcı hiçbir Pro kalıntısı görmüyor. İleride yeni özelliklerle
+> birlikte yeniden değerlendirilecek.
 
 ### Free
 - Toplam 5 kitap limiti
