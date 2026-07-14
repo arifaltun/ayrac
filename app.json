@@ -85,6 +85,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "6f409507-7c86-4b73-bc10-1fd8b3b7707d"
+      }
+    },
+    "owner": "arifaltun"
   }
 }
