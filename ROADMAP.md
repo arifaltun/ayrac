@@ -110,8 +110,12 @@ Her görev tamamlandığında `[ ]` → `[x]` yapılacak.
 - [ ] **Kart rötuşları** — 5 varyantın gerçek cihaz Story paylaşımında ince ayarı:
   uzun başlık/alıntı uç durumları, Android gölge kalitesi (ViewShot), renk paleti
   ile varyant zeminlerinin uyumu
-- [ ] **Web yayını** — `expo export` ile statik web çıktısı (app.json `web.output:
-  "static"` hazır); tanıtım sayfası + tarayıcıda temel kullanım
+- [x] **Web yayını** — EAS Hosting'de canlı: https://ayrac.expo.app
+  (`npx expo export --platform web` + `npx eas-cli deploy --prod`). Native
+  özellikler web'de zarif düşüyor: haptik sessiz no-op, Alert →
+  window.confirm, barkod/kamera gizli, hatırlatıcı "mobil uygulamada" notlu,
+  paylaşım kartı PNG indirme, CSV tarayıcı indirmesi, PDF yazdırma diyaloğu.
+  Tanıtım sayfası ayrı iş olarak açık
 - [x] **v1 tamamen ücretsiz** — Free/Pro ayrımı kullanıcıdan kaldırıldı; tüm
   özellikler herkese açık, 5 kitap limiti yok. Monetizasyon altyapısı
   (ProContext, paywall, ProFeatureGate) silinmedi, `constants/features.ts`
