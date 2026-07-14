@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { Text, View } from 'react-native';
 import Slider from '@react-native-community/slider';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/haptics';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/constants/tokens';
 

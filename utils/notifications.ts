@@ -12,15 +12,21 @@ export type ReminderSettings = {
 
 const DEFAULT_SETTINGS: ReminderSettings = { enabled: false, hour: 20, minute: 0 };
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Zamanlanmış yerel bildirim web'de desteklenmiyor — hatırlatıcı arayüzü
+// bu bayrağa bakarak kendini "mobil uygulamada" notuyla gizler
+export const remindersSupported = Platform.OS !== 'web';
+
+if (remindersSupported) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export async function loadReminderSettings(): Promise<ReminderSettings> {
   const raw = await AsyncStorage.getItem(REMINDER_KEY);
@@ -33,6 +39,7 @@ export async function saveReminderSettings(settings: ReminderSettings): Promise<
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {
+  if (!remindersSupported) return false;
   const { status } = await Notifications.requestPermissionsAsync();
   return status === 'granted';
 }
@@ -50,6 +57,7 @@ async function ensureAndroidChannel(): Promise<void> {
 }
 
 export async function scheduleReminder(settings: ReminderSettings): Promise<void> {
+  if (!remindersSupported) return;
   await Notifications.cancelAllScheduledNotificationsAsync();
   if (!settings.enabled) return;
   await ensureAndroidChannel();
@@ -72,5 +80,6 @@ export async function scheduleReminder(settings: ReminderSettings): Promise<void
 }
 
 export async function cancelReminder(): Promise<void> {
+  if (!remindersSupported) return;
   await Notifications.cancelAllScheduledNotificationsAsync();
 }

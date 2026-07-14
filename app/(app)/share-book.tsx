@@ -1,11 +1,12 @@
 import { useRef, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Pressable, Dimensions,
-  ActivityIndicator, Image, ScrollView, Platform, Alert, Linking,
+  ActivityIndicator, Image, ScrollView, Platform, Linking,
   NativeSyntheticEvent, TextLayoutEventData, StyleProp, TextStyle,
 } from 'react-native';
+import { Alert } from '@/utils/alert';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +18,9 @@ import { useBooks } from '@/context/BooksContext';
 import { usePro } from '@/context/ProContext';
 import { fonts } from '@/constants/tokens';
 import { computeReaderIdentity, DEFAULT_IDENTITY } from '@/utils/readerIdentity';
+import { downloadDataUri } from '@/utils/webDownload';
+
+const IS_WEB = Platform.OS === 'web';
 
 const { width: W } = Dimensions.get('window');
 const CARD_W = W - 48;
@@ -782,6 +786,23 @@ export default function ShareBookScreen() {
     return await viewShotRef.current.capture();
   };
 
+  // Web'de Sharing/MediaLibrary yok — kart PNG olarak indirilir
+  const handleDownloadWeb = async () => {
+    setLoading(true);
+    try {
+      const uri = await capture();
+      if (!uri) return;
+      const slug = book.title.toLowerCase().replace(/[^a-z0-9çğıöşü]+/gi, '-').replace(/^-|-$/g, '');
+      downloadDataUri(uri, `ayrac-${slug || 'kart'}.png`);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch {
+      Alert.alert('İndirilemedi', 'Kart hazırlanırken bir sorun oldu. Mobil uygulamadan da paylaşabilirsin.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleShare = async () => {
     setLoading(true);
     try {
@@ -870,6 +891,8 @@ export default function ShareBookScreen() {
               // Çıktı cihazdan bağımsız: Story 1080×1920, Feed 1080×1080
               width: 1080,
               height: format === 'story' ? 1920 : 1080,
+              // Web'de tmpfile yok — indirme akışı data URI bekler
+              ...(IS_WEB ? { result: 'data-uri' as const } : null),
             }}
           >
             <ShareCard
@@ -958,34 +981,58 @@ export default function ShareBookScreen() {
           {saved ? (
             <View style={s.savedBadge}>
               <Ionicons name="checkmark-circle" size={14} color="#4ecb91" />
-              <Text style={s.savedText}>Galeriye kaydedildi</Text>
+              <Text style={s.savedText}>{IS_WEB ? 'PNG indirildi' : 'Galeriye kaydedildi'}</Text>
             </View>
           ) : statusHint ? (
             <Text style={s.hintText}>{statusHint}</Text>
           ) : null}
         </View>
-        <Pressable
-          style={[s.actionBtn, s.actionBtnPrimary]}
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); handleShare(); }}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color="#000" />
-          ) : (
-            <>
-              <Ionicons name="share-outline" size={16} color="#000" />
-              <Text style={s.actionBtnPrimaryText}>Paylaş</Text>
-            </>
-          )}
-        </Pressable>
-        <Pressable
-          style={[s.actionBtn, s.actionBtnSecondary]}
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleSaveToGallery(); }}
-          disabled={loading}
-        >
-          <Ionicons name="download-outline" size={16} color="rgba(255,255,255,0.7)" />
-          <Text style={s.actionBtnSecondaryText}>Galeriye kaydet</Text>
-        </Pressable>
+        {IS_WEB ? (
+          <>
+            <Pressable
+              style={[s.actionBtn, s.actionBtnPrimary]}
+              onPress={handleDownloadWeb}
+              disabled={loading}
+              accessibilityRole="button"
+              accessibilityLabel="Kartı PNG olarak indir"
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#000" />
+              ) : (
+                <>
+                  <Ionicons name="download-outline" size={16} color="#000" />
+                  <Text style={s.actionBtnPrimaryText}>PNG olarak indir</Text>
+                </>
+              )}
+            </Pressable>
+            <Text style={[s.hintText, { textAlign: 'center' }]}>Instagram’da paylaşmak mobil uygulamada</Text>
+          </>
+        ) : (
+          <>
+            <Pressable
+              style={[s.actionBtn, s.actionBtnPrimary]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); handleShare(); }}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#000" />
+              ) : (
+                <>
+                  <Ionicons name="share-outline" size={16} color="#000" />
+                  <Text style={s.actionBtnPrimaryText}>Paylaş</Text>
+                </>
+              )}
+            </Pressable>
+            <Pressable
+              style={[s.actionBtn, s.actionBtnSecondary]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleSaveToGallery(); }}
+              disabled={loading}
+            >
+              <Ionicons name="download-outline" size={16} color="rgba(255,255,255,0.7)" />
+              <Text style={s.actionBtnSecondaryText}>Galeriye kaydet</Text>
+            </Pressable>
+          </>
+        )}
       </View>
     </View>
   );

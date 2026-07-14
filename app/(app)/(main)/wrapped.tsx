@@ -1,7 +1,8 @@
 import { memo, useRef, useState } from 'react';
 import {
-  View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Alert,
+  View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Platform,
 } from 'react-native';
+import { Alert } from '@/utils/alert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -16,6 +17,9 @@ import { BookCover } from '@/components/BookCover';
 import { RatingText } from '@/components/RatingText';
 import { ProFeatureGate } from '@/components/ProFeatureGate';
 import { computeReaderIdentity } from '@/utils/readerIdentity';
+import { downloadText } from '@/utils/webDownload';
+
+const IS_WEB = Platform.OS === 'web';
 
 const MONTHS_TR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -445,9 +449,14 @@ export default function WrappedScreen() {
       ]);
       const csv = [header, ...dataRows].map((r) => r.join(',')).join('\n');
       const slug = periodLabel.toLowerCase().replace(/\s+/g, '-');
-      const path = FileSystem.cacheDirectory + `ayrac-${slug}.csv`;
-      await FileSystem.writeAsStringAsync(path, csv, { encoding: FileSystem.EncodingType.UTF8 });
-      await Sharing.shareAsync(path, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
+      if (IS_WEB) {
+        // Web'de dosya sistemi/paylaşım yok — tarayıcı indirmesi yeterli
+        downloadText(csv, `ayrac-${slug}.csv`, 'text/csv');
+      } else {
+        const path = FileSystem.cacheDirectory + `ayrac-${slug}.csv`;
+        await FileSystem.writeAsStringAsync(path, csv, { encoding: FileSystem.EncodingType.UTF8 });
+        await Sharing.shareAsync(path, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
+      }
     } catch {
       Alert.alert('Dışa aktarılamadı', 'CSV dosyası oluşturulurken bir sorun oldu. Tekrar dener misin?');
     } finally {
@@ -461,8 +470,14 @@ export default function WrappedScreen() {
     setExporting('pdf');
     try {
       const html = buildPdfHtml(finished, periodLabel, pages, avg, totalReadingSeconds);
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
-      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf' });
+      if (IS_WEB) {
+        // printToFileAsync web'de yok — tarayıcının yazdırma diyaloğu
+        // "PDF olarak kaydet" seçeneğiyle aynı işi görür
+        await Print.printAsync({ html });
+      } else {
+        const { uri } = await Print.printToFileAsync({ html, base64: false });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf' });
+      }
     } catch {
       Alert.alert('Dışa aktarılamadı', 'PDF oluşturulurken bir sorun oldu. Tekrar dener misin?');
     } finally {

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, Pressable, Modal,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';

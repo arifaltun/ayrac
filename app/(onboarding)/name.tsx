@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/haptics';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/constants/tokens';
 import { ScalePressable } from '@/components/ScalePressable';

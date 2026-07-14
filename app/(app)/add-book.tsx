@@ -2,13 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView,
   StyleSheet, KeyboardAvoidingView, Platform,
-  Image, ActivityIndicator, Keyboard, Alert,
+  Image, ActivityIndicator, Keyboard,
 } from 'react-native';
+import { Alert } from '@/utils/alert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/haptics';
 import { useTheme } from '@/context/ThemeContext';
 import { useBooks } from '@/context/BooksContext';
 import { usePro } from '@/context/ProContext';
@@ -453,14 +454,17 @@ export default function AddBookScreen() {
                   />
                 )}
               </View>
-              <Pressable
-                onPress={openScanner}
-                style={[styles.scanBtn, { backgroundColor: t.surface2, borderColor: t.border }]}
-                accessibilityLabel="Barkod tara"
-                accessibilityRole="button"
-              >
-                <Ionicons name="barcode-outline" size={20} color={t.muted} />
-              </Pressable>
+              {/* Barkod tarama web'de desteklenmiyor — buton yalnızca mobilde */}
+              {Platform.OS !== 'web' && (
+                <Pressable
+                  onPress={openScanner}
+                  style={[styles.scanBtn, { backgroundColor: t.surface2, borderColor: t.border }]}
+                  accessibilityLabel="Barkod tara"
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="barcode-outline" size={20} color={t.muted} />
+                </Pressable>
+              )}
             </View>
             {scanError ? (
               <Text style={[styles.scanError, { color: t.orange }]}>{scanError}</Text>
@@ -610,7 +614,7 @@ export default function AddBookScreen() {
       {/* Barkod tarayıcı — Modal İÇİNDE DEĞİL: expo-camera'nın onBarcodeScanned'i
           iOS'ta RN Modal içinde güvenilir tetiklenmiyor (expo/expo#28846).
           Tam ekran overlay olarak en üstte render edilir. */}
-      {scannerOpen && (
+      {scannerOpen && Platform.OS !== 'web' && (
         <View style={[StyleSheet.absoluteFill, styles.scannerContainer, { zIndex: 100, elevation: 100 }]}>
           <CameraView
             ref={cameraRef}

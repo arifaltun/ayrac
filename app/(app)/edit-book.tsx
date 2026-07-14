@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView,
-  StyleSheet, KeyboardAvoidingView, Platform, Alert, Keyboard,
+  StyleSheet, KeyboardAvoidingView, Platform, Keyboard,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { Alert } from '@/utils/alert';
+import * as Haptics from '@/utils/haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';

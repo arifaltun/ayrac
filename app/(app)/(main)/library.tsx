@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import {
-  View, Text, ScrollView, Pressable, StyleSheet, Image, Alert, FlatList,
+  View, Text, ScrollView, Pressable, StyleSheet, Image, FlatList,
   Modal, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, DevSettings,
   ListRenderItemInfo,
 } from 'react-native';
+import { Alert } from '@/utils/alert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/context/ThemeContext';
 import { useBooks, Book } from '@/context/BooksContext';
@@ -21,7 +22,7 @@ import { usePro, PRO_PRICE_LABEL } from '@/context/ProContext';
 import { MONETIZATION_ENABLED } from '@/constants/features';
 import {
   loadReminderSettings, saveReminderSettings, scheduleReminder,
-  cancelReminder, requestNotificationPermission, ReminderSettings,
+  cancelReminder, requestNotificationPermission, remindersSupported, ReminderSettings,
 } from '@/utils/notifications';
 import { normalizeAuthorName } from '@/utils/authorName';
 import { loadActiveSession, clearActiveSession } from '@/utils/activeSession';
@@ -666,19 +667,29 @@ export default function LibraryScreen() {
               <Text style={[styles.settingsRowMeta, { color: t.muted }]}>{isDark ? 'Açığa geç' : 'Karanlığa geç'}</Text>
             </Pressable>
 
-            {/* Notifications */}
-            <Pressable
-              style={[styles.settingsRow, { borderColor: t.border }]}
-              onPress={() => { setSettingsVisible(false); openReminderModal(); }}
-            >
-              <View style={styles.settingsRowLeft}>
-                <Ionicons name={reminder.enabled ? 'notifications' : 'notifications-outline'} size={16} color={t.muted} />
-                <Text style={[styles.settingsRowLabel, { color: t.fg }]}>Günlük hatırlatıcı</Text>
+            {/* Notifications — web'de zamanlanmış bildirim yok, satır nota dönüşür */}
+            {remindersSupported ? (
+              <Pressable
+                style={[styles.settingsRow, { borderColor: t.border }]}
+                onPress={() => { setSettingsVisible(false); openReminderModal(); }}
+              >
+                <View style={styles.settingsRowLeft}>
+                  <Ionicons name={reminder.enabled ? 'notifications' : 'notifications-outline'} size={16} color={t.muted} />
+                  <Text style={[styles.settingsRowLabel, { color: t.fg }]}>Günlük hatırlatıcı</Text>
+                </View>
+                <Text style={[styles.settingsRowMeta, { color: reminder.enabled ? t.primary : t.muted }]}>
+                  {reminder.enabled ? `${String(reminder.hour).padStart(2,'0')}:${String(reminder.minute).padStart(2,'0')}` : 'Kapalı'}
+                </Text>
+              </Pressable>
+            ) : (
+              <View style={[styles.settingsRow, { borderColor: t.border, opacity: 0.55 }]}>
+                <View style={styles.settingsRowLeft}>
+                  <Ionicons name="notifications-outline" size={16} color={t.muted} />
+                  <Text style={[styles.settingsRowLabel, { color: t.fg }]}>Günlük hatırlatıcı</Text>
+                </View>
+                <Text style={[styles.settingsRowMeta, { color: t.muted }]}>Mobil uygulamada</Text>
               </View>
-              <Text style={[styles.settingsRowMeta, { color: reminder.enabled ? t.primary : t.muted }]}>
-                {reminder.enabled ? `${String(reminder.hour).padStart(2,'0')}:${String(reminder.minute).padStart(2,'0')}` : 'Kapalı'}
-              </Text>
-            </Pressable>
+            )}
 
             <View style={[styles.settingsDivider, { backgroundColor: t.border }]} />
 

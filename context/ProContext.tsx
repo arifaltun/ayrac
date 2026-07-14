@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/haptics';
 import { fonts } from '@/constants/tokens';
 import { MONETIZATION_ENABLED } from '@/constants/features';
 import { useTheme } from '@/context/ThemeContext';

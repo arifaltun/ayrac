@@ -2,7 +2,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/haptics';
 import { useTheme } from '@/context/ThemeContext';
 import { ScalePressable } from '@/components/ScalePressable';
 

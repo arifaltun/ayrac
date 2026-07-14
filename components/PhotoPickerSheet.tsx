@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { Alert, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert } from '@/utils/alert';
+import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/context/ThemeContext';
@@ -111,16 +112,19 @@ export function PhotoPickerSheet({ visible, onClose, onPicked, canRemove, onRemo
             <Text style={[styles.title, { color: t.fg, fontFamily: fonts.serifMedium }]}>
               Kapak fotoğrafı
             </Text>
-            <Pressable
-              style={({ pressed }) => [styles.option, { borderColor: t.border, opacity: pressed ? 0.6 : 1 }]}
-              onPressIn={() => dlog('onPressIn: kamera')}
-              onPress={() => select('camera')}
-              accessibilityRole="button"
-              accessibilityLabel="Fotoğraf çek"
-            >
-              <Ionicons name="camera-outline" size={20} color={t.fg} />
-              <Text style={[styles.optionText, { color: t.fg }]}>Fotoğraf çek</Text>
-            </Pressable>
+            {/* Web'de kamerayla çekim yok — galeri seçeneği dosya seçicisine dönüşür */}
+            {Platform.OS !== 'web' && (
+              <Pressable
+                style={({ pressed }) => [styles.option, { borderColor: t.border, opacity: pressed ? 0.6 : 1 }]}
+                onPressIn={() => dlog('onPressIn: kamera')}
+                onPress={() => select('camera')}
+                accessibilityRole="button"
+                accessibilityLabel="Fotoğraf çek"
+              >
+                <Ionicons name="camera-outline" size={20} color={t.fg} />
+                <Text style={[styles.optionText, { color: t.fg }]}>Fotoğraf çek</Text>
+              </Pressable>
+            )}
             <Pressable
               style={({ pressed }) => [styles.option, { borderColor: t.border, opacity: pressed ? 0.6 : 1 }]}
               onPressIn={() => dlog('onPressIn: galeri')}
